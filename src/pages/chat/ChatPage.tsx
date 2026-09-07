@@ -1349,14 +1349,21 @@ const ChatPage = () => {
   useEffect(() => {
     if (!isLoading) return;
     const id = window.setInterval(() => {
-      if (!abortControllerRef.current && !getActiveComputerRun() && !operatorRunId && !activeResearchJobId) {
+      const hasActiveSlidesJob = messages.some((message) => Boolean(message.slidesJobId));
+      if (
+        !abortControllerRef.current &&
+        !getActiveComputerRun() &&
+        !operatorRunId &&
+        !activeResearchJobId &&
+        !hasActiveSlidesJob
+      ) {
         isSubmittingRef.current = false;
         setIsLoading(false);
         setIsThinking(false);
       }
     }, 4000);
     return () => window.clearInterval(id);
-  }, [isLoading, operatorRunId, activeResearchJobId]);
+  }, [isLoading, operatorRunId, activeResearchJobId, messages]);
 
   const ownInsertedIdsRef = useRef<Set<string>>(new Set());
 
@@ -1392,7 +1399,8 @@ const ChatPage = () => {
         if (chatMode !== "normal" && chatMode !== "learning") handleModeChange("normal" as any);
       }
       setTimeout(() => {
-        if (!abortControllerRef.current && !getActiveComputerRun()) {
+        const hasActiveSlidesJob = messages.some((message) => Boolean(message.slidesJobId));
+        if (!abortControllerRef.current && !getActiveComputerRun() && !hasActiveSlidesJob) {
           setIsLoading(false);
           setIsThinking(false);
         }
