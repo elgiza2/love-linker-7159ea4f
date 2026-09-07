@@ -21,6 +21,7 @@ import { warmEdgeFunctions } from "@/lib/warmEdgeFunctions";
 import AppSidebar from "@/components/layout/AppSidebar";
 import { useSidebarCollapsed } from "@/hooks/useSidebarCollapsed";
 import { isPaidUser } from "@/lib/subscriptionGating";
+import { isUnlimitedMediaModel } from "@/lib/mediaQuota";
 
 // Background job helpers and one-off lib utilities that are still referenced
 // from the surviving body (cancel/cleanup paths, etc.).
@@ -1580,43 +1581,43 @@ const ChatPage = () => {
     }
 
 
-    // Subscribers-only gate for media generation (images / video). Uses the
-    // shared `isPaidPlan` helper so this list stays in one place.
-    const SUBSCRIBER_MODES: ChatMode[] = ["video"];
+    // Video used to be subscribers-only; the free DeAPI video models make
+    // basic video generation free for everyone. Only a paid video model
+    // (premium or credit-priced) still hits the paywall now.
     const isPaidPlan = isPaidUser(userPlan);
 
-
-    // ── No auto-routing in normal chat ───────────────────────────────
-    // A normal-mode message stays in normal mode. When the user asks for
-    // images, video or deep research inside a plain chat, the model's own
-    // tools handle it — we never flip the service chips, re-send the text or
-    // interrupt the turn with a routing toast. Service modes are only entered
-    // when the user explicitly taps a chip.
-
-
-    if (SUBSCRIBER_MODES.includes(chatMode) && !isPaidPlan) {
-      const feature: "images" | "video" | "code" =
-        chatMode === "video" ? "video" : chatMode === "images" ? "images" : "code";
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "user",
-          clientId: `user-paywall-${Date.now()}`,
-          content: text,
-          mode: chatMode,
-        } as Message,
-        {
-          role: "assistant",
-          clientId: `assist-paywall-${Date.now()}`,
-          content: "",
-          mode: chatMode,
-          paywall: { feature },
-        } as Message,
-      ]);
-      setInput("");
-      isSubmittingRef.current = false;
-      return;
+    if (chatMode === "video" && !isPaidPlan) {
+      const videoModel = mediaModel as any | null;
+      const hasVideoModel = !!videoModel && videoModel.type === "video";
+      const videoModelFree =
+        hasVideoModel &&
+        !videoModel.isPremium &&
+        (isUnlimitedMediaModel(videoModel) || Number(videoModel.credits ?? 0) === 0);
+      if (hasVideoModel && !videoModelFree) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "user",
+            clientId: `user-paywall-${Date.now()}`,
+            content: text,
+            mode: chatMode,
+          } as Message,
+          {
+            role: "assistant",
+            clientId: `assist-paywall-${Date.now()}`,
+            content: "",
+            mode: chatMode,
+            paywall: { feature: "video" },
+          } as Message,
+        ]);
+        setInput("");
+        isSubmittingRef.current = false;
+        return;
+      }
+      // No model picked yet → fall through so the media-mode block prompts
+      // the user to choose (and auto-picks the default free model).
     }
+
 
     if (chatMode === "images" && (mediaModel as any)?.isPremium && !isPaidPlan) {
       setMessages((prev) => [
