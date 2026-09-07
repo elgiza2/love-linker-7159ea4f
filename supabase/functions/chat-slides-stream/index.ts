@@ -150,6 +150,7 @@ ${style ? `Deck style — follow it in tone, wording density and slide rhythm: $
 - Write exactly ${numberOfSlides} slides total, mixing types "cover" (first slide only), "bullets", "stats", "quote", "two-col" and "closing" (last slide only) as fits the content.
 - Give every slide a "layout" chosen from: ${LAYOUTS.join(", ")}. Vary the layouts so no two consecutive slides use the same one.
 - Every "bullets" slide has 3-5 concise, information-dense bullets (no filler).
+- On "stats" slides, each "value" is a short figure (max 12 characters, e.g. "2.5 GW", "42%") and each "label" is at most 4 words. Never put a sentence in "value".
 - All text must be in language: ${language}.
 - Output raw JSON only, nothing else.`;
 }
