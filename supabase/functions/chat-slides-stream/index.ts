@@ -249,6 +249,7 @@ async function runSlidesJob(
     templateId: string;
     templateName?: string;
     templateColors?: [string, string];
+    stylePrompt?: string;
   },
 ) {
   try {
@@ -300,6 +301,7 @@ Deno.serve(async (req) => {
   const language = String(body.language || "en");
   const templateId = String(body.templateId || "default");
   const templateName = body.templateName ? String(body.templateName) : undefined;
+  const stylePrompt = body.stylePrompt ? String(body.stylePrompt).slice(0, 600) : undefined;
   const templateColors = Array.isArray(body.templateColors) && body.templateColors.length === 2
     ? (body.templateColors as [string, string])
     : undefined;
@@ -311,13 +313,23 @@ Deno.serve(async (req) => {
       kind: "slides",
       conversationId: (body.conversation_id as string) ?? null,
       messageId: (body.message_id as string) ?? null,
-      input: { topic, numberOfSlides, language, templateId, templateName, templateColors },
+      input: { topic, numberOfSlides, language, templateId, templateName, templateColors, stylePrompt },
     });
   } catch (error) {
     return json({ error: error instanceof Error ? error.message : "failed to create job" }, 500);
   }
 
-  background(runSlidesJob(db, jobId, { topic, numberOfSlides, language, templateId, templateName, templateColors }));
+  background(
+    runSlidesJob(db, jobId, {
+      topic,
+      numberOfSlides,
+      language,
+      templateId,
+      templateName,
+      templateColors,
+      stylePrompt,
+    }),
+  );
 
   return json({ jobId });
 });
