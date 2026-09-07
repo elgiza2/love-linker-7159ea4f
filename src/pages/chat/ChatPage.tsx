@@ -21,6 +21,7 @@ import { warmEdgeFunctions } from "@/lib/warmEdgeFunctions";
 import AppSidebar from "@/components/layout/AppSidebar";
 import { useSidebarCollapsed } from "@/hooks/useSidebarCollapsed";
 import { isPaidUser } from "@/lib/subscriptionGating";
+import { isUnlimitedMediaModel } from "@/lib/mediaQuota";
 
 // Background job helpers and one-off lib utilities that are still referenced
 // from the surviving body (cancel/cleanup paths, etc.).
