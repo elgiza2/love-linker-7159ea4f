@@ -69,6 +69,7 @@ export interface Message {
   slidesPlan?: import("@/lib/slides/planTypes").SlidesPlanState;
   slidesPendingTopic?: string;
   slidesJobId?: string;
+  slidesStatus?: string;
   docsArtifact?: { artifactId: string; title: string; docType: string; html?: string };
   docsClarify?: {
     reason: string;

@@ -451,7 +451,16 @@ export async function runSlidesTurn(args: RunSlidesTurnArgs): Promise<void> {
             finalize: "Finalizing deck",
           };
           const lbl = phaseLabels[phase];
-          setSearchStatus(lbl || "Preparing your deck");
+          const statusLabel = lbl || "Preparing your deck";
+          setSearchStatus(statusLabel);
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.clientId === `assistant-${localTurnId}` ||
+              (!!placeholderId && m.id === placeholderId)
+                ? { ...m, slidesStatus: statusLabel }
+                : m,
+            ),
+          );
           if (!narrative) setIsThinking(true);
         },
         onDelta: (_chunk, full) => {
@@ -508,6 +517,7 @@ export async function runSlidesTurn(args: RunSlidesTurnArgs): Promise<void> {
                       content: finalContent || m.content,
                       standardSlides: ss,
                       slidesJobId: undefined,
+                      slidesStatus: undefined,
                       mode: "slides",
                     }
                   : m,
@@ -553,6 +563,7 @@ export async function runSlidesTurn(args: RunSlidesTurnArgs): Promise<void> {
                       content: finalContent || m.content,
                       slidesDeck: enrichedDeck,
                       slidesJobId: undefined,
+                      slidesStatus: undefined,
                       mode: "slides",
                     }
                   : m,
@@ -593,6 +604,7 @@ export async function runSlidesTurn(args: RunSlidesTurnArgs): Promise<void> {
                       ...m,
                       content: "Slides generation finished without a deck. Please try again.",
                       slidesJobId: undefined,
+                      slidesStatus: undefined,
                       mode: "slides",
                     }
                   : m,
@@ -663,6 +675,7 @@ export async function runSlidesTurn(args: RunSlidesTurnArgs): Promise<void> {
                       content: finalContent,
                       slidesDeck: enrichedDeck,
                       slidesJobId: undefined,
+                      slidesStatus: undefined,
                       mode: "slides",
                     }
                   : m,
@@ -694,6 +707,7 @@ export async function runSlidesTurn(args: RunSlidesTurnArgs): Promise<void> {
                     ...m,
                     content: `Could not create the presentation: ${msg}`,
                     slidesJobId: undefined,
+                    slidesStatus: undefined,
                     mode: "slides",
                   }
                 : m,
@@ -738,6 +752,7 @@ export async function runSlidesTurn(args: RunSlidesTurnArgs): Promise<void> {
                     ...m,
                     content: partial || "Slides generation stopped unexpectedly. Please try again.",
                     slidesJobId: undefined,
+                      slidesStatus: undefined,
                   }
                 : m,
             ),

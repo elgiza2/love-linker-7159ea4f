@@ -490,9 +490,10 @@ const AnimatedInput = ({
             <div className="flex-1" />
 
             <AnimatePresence mode="popLayout" initial={false}>
-              {isLoading && !hasText ? (
+              {isLoading ? (
                 <Button
                   key="stop"
+                  type="button"
                   onClick={onCancel}
                   variant="destructive"
                   size="icon-sm"

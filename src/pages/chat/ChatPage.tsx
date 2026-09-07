@@ -1337,6 +1337,7 @@ const ChatPage = () => {
   };
 
   const isSubmittingRef = useRef(false);
+  const slidesRunningRef = useRef(false);
   // Timestamp of the current send lock. If any branch forgets to release the
   // lock (thrown error, early return), the composer used to stay frozen until
   // a reload — the "send button hangs" bug. A stale lock is now ignored.
@@ -1349,7 +1350,13 @@ const ChatPage = () => {
   useEffect(() => {
     if (!isLoading) return;
     const id = window.setInterval(() => {
-      if (!abortControllerRef.current && !getActiveComputerRun() && !operatorRunId && !activeResearchJobId) {
+      if (
+        !abortControllerRef.current &&
+        !getActiveComputerRun() &&
+        !operatorRunId &&
+        !activeResearchJobId &&
+        !slidesRunningRef.current
+      ) {
         isSubmittingRef.current = false;
         setIsLoading(false);
         setIsThinking(false);
@@ -1392,7 +1399,7 @@ const ChatPage = () => {
         if (chatMode !== "normal" && chatMode !== "learning") handleModeChange("normal" as any);
       }
       setTimeout(() => {
-        if (!abortControllerRef.current && !getActiveComputerRun()) {
+        if (!abortControllerRef.current && !getActiveComputerRun() && !slidesRunningRef.current) {
           setIsLoading(false);
           setIsThinking(false);
         }
@@ -1988,6 +1995,7 @@ const ChatPage = () => {
 
     // ── Slides mode: plan first (outline + imported data), generate after approval ─
     if (chatMode === "slides" || chatMode === "slides-images" || shouldAutoStartSlides) {
+      slidesRunningRef.current = true;
       try {
         // Follow-up like "عدّل السلايد 3 …" edits one slide of the last plan
         // instead of re-planning the whole deck.
@@ -2037,6 +2045,7 @@ const ChatPage = () => {
           attachedFileMeta: docFiles.map((f) => ({ name: f.name, chars: f.data.length })),
         });
       } finally {
+        slidesRunningRef.current = false;
         isSubmittingRef.current = false;
       }
       return;

@@ -185,11 +185,13 @@ function SlideRender({
   slide,
   palette,
   dir,
+  templateCover,
   portrait = false,
 }: {
   slide: SlideData;
   palette: SlideDeck["palette"];
   dir: "ltr" | "rtl";
+  templateCover?: string;
   portrait?: boolean;
 }) {
   const rawLayout = (slide.layout || slide.variant || "").toLowerCase();
@@ -267,6 +269,14 @@ function SlideRender({
         ["--slide-accent-color" as never]: accentColor,
       }}
     >
+      {templateCover && (
+        <img
+          src={templateCover}
+          alt=""
+          aria-hidden="true"
+          className="absolute inset-0 h-full w-full object-cover opacity-20"
+        />
+      )}
       {/* Cover background image */}
       {isCover && slide.image && (
         <>
@@ -570,6 +580,7 @@ const SlidesDeckCard = ({ deck, hideCard = false, autoOpen = false, onClose }: P
   // carry a generic white palette, so resolve it from the template at render
   // time instead of trusting whatever the generator stored.
   const palette = { ...slidesTemplatePalette(deck.templateId), ...(deck.brandKit?.primaryColor ? { primary: deck.brandKit.primaryColor } : {}) };
+  const templateCover = findSlidesTemplate(deck.templateId).cover;
 
   const [idx, setIdx] = useState(0);
   const [orientation, setOrientation] = useState<"horizontal" | "vertical">("horizontal");
@@ -675,7 +686,7 @@ const SlidesDeckCard = ({ deck, hideCard = false, autoOpen = false, onClose }: P
         >
           <div className="absolute inset-0 pointer-events-none">
             <ScaledSlide>
-              <SlideRender slide={cover} palette={palette} dir={dir} />
+              <SlideRender slide={cover} palette={palette} dir={dir} templateCover={templateCover} />
             </ScaledSlide>
           </div>
           <div className="absolute top-2.5 end-2.5 inline-flex items-center gap-1 rounded-full bg-background/70 backdrop-blur px-2.5 py-1 text-[11px] font-medium text-foreground opacity-0 group-hover:opacity-100 transition">
@@ -777,7 +788,7 @@ const SlidesDeckCard = ({ deck, hideCard = false, autoOpen = false, onClose }: P
                       className="absolute inset-0"
                     >
                       <ScaledSlide portrait={portrait}>
-                        <SlideRender slide={deck.slides[idx]} palette={palette} dir={dir} portrait={portrait} />
+                        <SlideRender slide={deck.slides[idx]} palette={palette} dir={dir} templateCover={templateCover} portrait={portrait} />
                       </ScaledSlide>
                     </motion.div>
                   </AnimatePresence>
@@ -806,7 +817,7 @@ const SlidesDeckCard = ({ deck, hideCard = false, autoOpen = false, onClose }: P
                       className={`w-full ${portrait ? "max-w-md aspect-[9/16]" : "max-w-5xl aspect-[16/9]"} rounded-2xl overflow-hidden snap-center shrink-0`}
                     >
                       <ScaledSlide portrait={portrait}>
-                        <SlideRender slide={s} palette={palette} dir={dir} portrait={portrait} />
+                        <SlideRender slide={s} palette={palette} dir={dir} templateCover={templateCover} portrait={portrait} />
                       </ScaledSlide>
                     </div>
                   ))}
@@ -828,7 +839,7 @@ const SlidesDeckCard = ({ deck, hideCard = false, autoOpen = false, onClose }: P
                   >
                     <div className="absolute inset-0 pointer-events-none">
                       <ScaledSlide>
-                        <SlideRender slide={s} palette={palette} dir={dir} />
+                        <SlideRender slide={s} palette={palette} dir={dir} templateCover={templateCover} />
                       </ScaledSlide>
                     </div>
                     <span className="absolute bottom-0.5 right-1 text-[9px] font-mono text-foreground/80 bg-background/40 rounded px-1">

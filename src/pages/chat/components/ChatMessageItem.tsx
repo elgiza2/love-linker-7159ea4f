@@ -29,6 +29,7 @@ import {
 } from "../branching/branchHistory";
 import { updateMessageMetadata } from "../services/conversationApi";
 import { trackChatInteraction } from "../services/trackInteraction";
+import MegsyStarGradient from "@/components/branding/MegsyStarGradient";
 
 
 // Persist branching state on the pivot user message's metadata JSONB so
@@ -351,6 +352,26 @@ const ChatMessageItemImpl = ({
           <Suspense fallback={null}>
             <SlidesDeckCard deck={msg.slidesDeck} />
           </Suspense>
+        </div>
+      )}
+      {msg.role === "assistant" && msg.slidesJobId && !msg.slidesDeck && !msg.standardSlides && (
+        <div className="px-3 md:px-12 mt-3" role="status" aria-live="polite">
+          <div className="flex items-center gap-3 py-2 text-foreground">
+            <MegsyStarGradient className="h-6 w-6 shrink-0 motion-safe:animate-[media-breathe_1.8s_ease-in-out_infinite]" />
+            <div className="min-w-0">
+              <div className="text-[13px] font-semibold">
+                {/^[\u0600-\u06FF]/.test(msg.slidesPendingTopic || "")
+                  ? "ميغسي بيجهز السلايدس"
+                  : "Megsy is creating your slides"}
+              </div>
+              <div className="text-[12px] text-muted-foreground">
+                {msg.slidesStatus ||
+                  (/^[\u0600-\u06FF]/.test(msg.slidesPendingTopic || "")
+                    ? "جاري تجهيز التصميم والمحتوى…"
+                    : "Preparing the design and content…")}
+              </div>
+            </div>
+          </div>
         </div>
       )}
       {msg.role === "assistant" && msg.standardSlides && (
