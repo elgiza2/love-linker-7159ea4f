@@ -97,24 +97,71 @@ type SlideDeck = {
   slides: Record<string, unknown>[];
 };
 
-function deckSystemPrompt(numberOfSlides: number, language: string) {
+/** Layouts the renderer (src/components/chat/SlidesDeckCard.tsx) knows how to
+ *  draw. Offering them to the model is what makes two decks built from
+ *  different templates actually look different. */
+const LAYOUTS = [
+  "magazine-cover",
+  "bullets",
+  "two-col",
+  "three-col",
+  "pillars",
+  "bento",
+  "icon-grid",
+  "numbered-list",
+  "step-vertical",
+  "timeline",
+  "comparison",
+  "vs-split",
+  "big-number",
+  "kpi-strip",
+  "stat-cluster",
+  "pull-quote",
+  "split-left",
+  "split-right",
+];
+
+function deckSystemPrompt(
+  numberOfSlides: number,
+  language: string,
+  templateName?: string,
+  stylePrompt?: string,
+) {
+  const style = [
+    templateName ? `Template: "${templateName}".` : "",
+    stylePrompt ? `Design direction: ${stylePrompt}` : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return `You are a senior presentation designer. Produce a JSON object describing a slide deck (no prose, no markdown fences) with this exact shape:
 {
   "title": string,
   "subtitle": string,
   "slides": [
-    { "type": "cover", "title": string, "subtitle": string },
-    { "type": "bullets", "title": string, "bullets": [string, ...] },
-    { "type": "stats", "title": string, "stats": [{"label": string, "value": string}] },
-    { "type": "quote", "quote": string, "attribution": string },
+    { "type": "cover", "layout": "magazine-cover", "title": string, "subtitle": string },
+    { "type": "bullets", "layout": string, "title": string, "bullets": [string, ...] },
+    { "type": "stats", "layout": string, "title": string, "stats": [{"label": string, "value": string}] },
+    { "type": "quote", "layout": "pull-quote", "quote": string, "attribution": string },
     { "type": "closing", "title": string, "subtitle": string }
   ]
 }
-Rules:
+${style ? `Deck style — follow it in tone, wording density and slide rhythm: ${style}\n` : ""}Rules:
 - Write exactly ${numberOfSlides} slides total, mixing types "cover" (first slide only), "bullets", "stats", "quote", "two-col" and "closing" (last slide only) as fits the content.
+- Give every slide a "layout" chosen from: ${LAYOUTS.join(", ")}. Vary the layouts so no two consecutive slides use the same one.
 - Every "bullets" slide has 3-5 concise, information-dense bullets (no filler).
+- On "stats" slides, each "value" is a short figure (max 12 characters, e.g. "2.5 GW", "42%") and each "label" is at most 4 words. Never put a sentence in "value".
 - All text must be in language: ${language}.
 - Output raw JSON only, nothing else.`;
+}
+
+/** Perceived brightness (0-1) of a #rrggbb colour; unknown formats read mid-grey. */
+function brightness(hex: string): number {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return 0.5;
+  const n = parseInt(m[1], 16);
+  const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
 }
 
 async function buildDeck(
@@ -126,6 +173,7 @@ async function buildDeck(
     templateId: string;
     templateName?: string;
     templateColors?: [string, string];
+    stylePrompt?: string;
   },
 ): Promise<SlideDeck> {
   // Token budget scales with the deck size; a fixed 4k truncated longer decks
@@ -135,7 +183,7 @@ async function buildDeck(
   for (let attempt = 0; attempt < 2; attempt++) {
     const raw = await completion(
       db,
-      deckSystemPrompt(args.numberOfSlides, args.language),
+      deckSystemPrompt(args.numberOfSlides, args.language, args.templateName, args.stylePrompt),
       `Build the deck for this brief:\n\n${args.topic}`,
       tokenBudget,
     );
@@ -153,16 +201,18 @@ async function buildDeck(
   const colors = args.templateColors && args.templateColors.length === 2
     ? args.templateColors
     : ["#111827", "#6366f1"];
-  // Always derive a readable bg/fg pair from the template accent so a deck
-  // never renders with an unreadable or blank canvas — dark templates get a
-  // dark, high-contrast theme instead of forcing white everywhere.
+  // Always derive a readable bg/fg pair from the template colours so a deck
+  // never renders with an unreadable or blank canvas. Measured brightness
+  // replaces the old hex-pattern guess, which read colours like #1a3a1f as
+  // light and painted dark templates white.
   const primary = String(colors[0] || "#111827");
-  const looksDark = /^#(?:[0-3][0-9a-f]){3}$/i.test(primary) || /^#0[0-9a-f]{5}$/i.test(primary);
+  const accent = String(colors[1] || "#6366f1");
+  const bgIsDark = brightness(primary) < 0.45;
   const palette = {
     primary,
-    accent: String(colors[1] || "#6366f1"),
-    bg: looksDark ? primary : "#ffffff",
-    fg: looksDark ? "#f8fafc" : "#111111",
+    accent,
+    bg: primary,
+    fg: bgIsDark ? "#f8fafc" : "#111111",
   };
 
   let slides = Array.isArray(parsed.slides) ? parsed.slides.filter((s: unknown) => s && typeof s === "object") : [];
@@ -200,6 +250,7 @@ async function runSlidesJob(
     templateId: string;
     templateName?: string;
     templateColors?: [string, string];
+    stylePrompt?: string;
   },
 ) {
   try {
@@ -251,6 +302,7 @@ Deno.serve(async (req) => {
   const language = String(body.language || "en");
   const templateId = String(body.templateId || "default");
   const templateName = body.templateName ? String(body.templateName) : undefined;
+  const stylePrompt = body.stylePrompt ? String(body.stylePrompt).slice(0, 600) : undefined;
   const templateColors = Array.isArray(body.templateColors) && body.templateColors.length === 2
     ? (body.templateColors as [string, string])
     : undefined;
@@ -262,13 +314,23 @@ Deno.serve(async (req) => {
       kind: "slides",
       conversationId: (body.conversation_id as string) ?? null,
       messageId: (body.message_id as string) ?? null,
-      input: { topic, numberOfSlides, language, templateId, templateName, templateColors },
+      input: { topic, numberOfSlides, language, templateId, templateName, templateColors, stylePrompt },
     });
   } catch (error) {
     return json({ error: error instanceof Error ? error.message : "failed to create job" }, 500);
   }
 
-  background(runSlidesJob(db, jobId, { topic, numberOfSlides, language, templateId, templateName, templateColors }));
+  background(
+    runSlidesJob(db, jobId, {
+      topic,
+      numberOfSlides,
+      language,
+      templateId,
+      templateName,
+      templateColors,
+      stylePrompt,
+    }),
+  );
 
   return json({ jobId });
 });

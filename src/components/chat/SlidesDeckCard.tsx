@@ -352,23 +352,38 @@ function SlideRender({
             ) : null}
             {slide.stats?.length ? (
               <div
-                className={`grid gap-8 w-full max-w-[1500px] ${slide.stats.length >= 4 ? "grid-cols-4" : `grid-cols-${Math.min(3, slide.stats.length)}`}`}
+                className={`grid gap-8 w-full max-w-[1500px] ${
+                  slide.stats.length >= 4
+                    ? "grid-cols-4"
+                    : slide.stats.length === 3
+                      ? "grid-cols-3"
+                      : slide.stats.length === 2
+                        ? "grid-cols-2"
+                        : "grid-cols-1"
+                }`}
               >
-                {slide.stats.slice(0, 6).map((s, i) => (
-                  <div
-                    key={i}
-                    className="rounded-3xl p-10"
-                    style={{ background: `${safePalette.fg}0d` }}
-                  >
+                {slide.stats.slice(0, 6).map((s, i) => {
+                  // Models sometimes return a whole phrase as the "value". Step
+                  // the type size down with its length so long values wrap
+                  // inside their own card instead of spilling over the next one.
+                  const len = (s.value || "").length;
+                  const size = len <= 8 ? 84 : len <= 14 ? 62 : len <= 24 ? 44 : 34;
+                  return (
                     <div
-                      className="font-extrabold"
-                      style={{ color: accentColor, fontSize: 84, lineHeight: 1 }}
+                      key={i}
+                      className="rounded-3xl p-10 min-w-0 overflow-hidden"
+                      style={{ background: `${safePalette.fg}0d` }}
                     >
-                      {s.value}
+                      <div
+                        className="font-extrabold break-words"
+                        style={{ color: accentColor, fontSize: size, lineHeight: 1.05 }}
+                      >
+                        {s.value}
+                      </div>
+                      <div className="slide-caption opacity-85 mt-4 break-words">{s.label}</div>
                     </div>
-                    <div className="slide-caption opacity-85 mt-4">{s.label}</div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : null}
             {slide.subtitle && (
