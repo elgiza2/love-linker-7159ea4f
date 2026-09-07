@@ -210,7 +210,7 @@ async function buildDeck(
   const palette = {
     primary,
     accent,
-    bg: bgIsDark ? primary : /^#?f{0,6}$/i.test(primary) ? "#ffffff" : primary,
+    bg: primary,
     fg: bgIsDark ? "#f8fafc" : "#111111",
   };
 
