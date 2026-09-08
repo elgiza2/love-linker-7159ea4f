@@ -236,7 +236,7 @@ async function deapiGenerate(opts: {
     const [width, height] = opts.aspectRatio === "9:16" ? [768, 1344]
       : opts.aspectRatio === "16:9" ? [1344, 768]
       : [1024, 1024];
-    res = await fetch(endpoint, {
+    ({ res, text } = await fetchWithRetry(endpoint, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${opts.key}`,
@@ -252,10 +252,15 @@ async function deapiGenerate(opts: {
         steps: opts.steps,
         guidance: 3.5,
       }),
-    });
+    }));
   }
-  const text = await res.text();
-  if (!res.ok) throw new Error(`deapi ${res.status}: ${text.slice(0, 300)}`);
+  if (!res.ok) {
+    // Cloudflare 5xx pages are noise to a chat user; keep the message human.
+    if (res.status >= 500) {
+      throw new Error("مزود الصور مشغول حاليًا. جرّب تبعت الطلب تاني بعد لحظات.");
+    }
+    throw new Error(`deapi ${res.status}: ${text.slice(0, 300)}`);
+  }
   let payload: any;
   try {
     payload = JSON.parse(text);
