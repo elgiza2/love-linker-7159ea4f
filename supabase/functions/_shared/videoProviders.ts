@@ -31,63 +31,77 @@ export function renderfulModelId(slug: string, i2v: boolean): string {
 
 
 /**
- * Novita AI — open-weight video models (Wan family, Apache-2.0 weights) served
- * either through the unified endpoint (`/v3/video/create`, flat body + `model`)
- * or through a model-native async endpoint (`/v3/async/<path>`, flat body).
+ * Novita AI — open-weight video models (Wan family, Apache-2.0 weights).
+ * Each model has its own async endpoint under `/v3/async/…`. Wan 2.2 – 2.6 use
+ * the DashScope-style nested body (`input` + `parameters`); Wan 2.7 uses a flat
+ * body. All of them return a `task_id` polled via `/v3/async/task-result`.
  */
 export const NOVITA_BASE = "https://api.novita.ai";
 
 export type NovitaVideoConfig = {
-  /** unified `model` id, or the native endpoint path when `native` is set */
-  model: string;
-  native?: string;
+  /** async endpoint path, e.g. `wan-2.2-t2v` */
+  path: string;
+  shape: "nested" | "flat";
   i2v?: boolean;
   v2v?: boolean;
-  /** unified i2v models take a `resolution` tier instead of an explicit size */
+  /** takes a `resolution` tier (480P/720P/1080P) instead of an explicit size */
   resolutionTier?: boolean;
+  audio?: boolean;
   maxDuration: number;
   fixedDuration?: number;
 };
 
 export const NOVITA_VIDEO: Record<string, NovitaVideoConfig> = {
-  "novita-wan-2.2-t2v": { model: "wan2.2_t2v", maxDuration: 5, fixedDuration: 5 },
+  "novita-wan-2.2-t2v": { path: "wan-2.2-t2v", shape: "nested", maxDuration: 5, fixedDuration: 5 },
   "novita-wan-2.2-i2v": {
-    model: "wan2.2_i2v",
+    path: "wan-2.2-i2v",
+    shape: "nested",
     i2v: true,
     resolutionTier: true,
     maxDuration: 5,
     fixedDuration: 5,
   },
-  "novita-wan-2.5-t2v": { model: "wan2.5_preview_t2v", maxDuration: 10 },
-  "novita-wan-2.5-i2v": {
-    model: "wan2.5_preview_i2v",
-    i2v: true,
-    resolutionTier: true,
+  "novita-wan-2.5-t2v": {
+    path: "wan-2.5-t2v-preview",
+    shape: "nested",
+    audio: true,
     maxDuration: 10,
   },
-  "novita-wan-2.6-t2v": { model: "wan2.6_t2v", maxDuration: 15 },
-  "novita-wan-2.6-i2v": {
-    model: "wan2.6_i2v",
+  "novita-wan-2.5-i2v": {
+    path: "wan-2.5-i2v-preview",
+    shape: "nested",
     i2v: true,
     resolutionTier: true,
+    audio: true,
+    maxDuration: 10,
+  },
+  "novita-wan-2.6-t2v": { path: "wan2.6-t2v", shape: "nested", audio: true, maxDuration: 15 },
+  "novita-wan-2.6-i2v": {
+    path: "wan2.6-i2v",
+    shape: "nested",
+    i2v: true,
+    resolutionTier: true,
+    audio: true,
     maxDuration: 15,
   },
   "novita-wan-2.6-v2v": {
-    model: "wan2.6_v2v",
-    i2v: true,
+    path: "wan2.6-v2v",
+    shape: "nested",
     v2v: true,
-    resolutionTier: true,
+    audio: true,
     maxDuration: 15,
   },
-  "novita-wan-2.7-t2v": { model: "wan2.7_t2v", native: "wan2.7-t2v", maxDuration: 15 },
+  "novita-wan-2.7-t2v": { path: "wan2.7-t2v", shape: "flat", audio: true, maxDuration: 15 },
   "novita-wan-2.7-i2v": {
-    model: "wan2.7_i2v",
-    native: "wan2.7-i2v",
+    path: "wan2.7-i2v",
+    shape: "flat",
     i2v: true,
     resolutionTier: true,
+    audio: true,
     maxDuration: 15,
   },
 };
+
 
 export const VIDEO_SLUG_ALIASES: Record<string, string> = {
   "deapi-ltx-2": "deapi-ltx-video",
