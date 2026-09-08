@@ -303,10 +303,18 @@ try { parent.postMessage({ type: 'megsy:runtime-ready' }, '*'); } catch(_) {}
   var ENTRY = ${JSON.stringify(entryPath)};
   var extraImports = {};
 
+  // Models often save JSX into a .ts/.js file. Babel only enables JSX parsing
+  // from the filename, so re-label those files before transforming.
+  function jsxFilename(path, code){
+    if (/\.(tsx|jsx)$/.test(path)) return path;
+    if (!/<[A-Za-z][A-Za-z0-9.]*[\s/>]/.test(code)) return path;
+    return path.replace(/\.ts$/, '.tsx').replace(/\.(m?js)$/, '.jsx');
+  }
+
   function transform(path, code){
     try{
       var out = Babel.transform(code, {
-        filename: path,
+        filename: jsxFilename(path, code),
         presets: [
           ['env', { modules: false, targets: { esmodules: true } }],
           'react',
@@ -319,6 +327,7 @@ try { parent.postMessage({ type: 'megsy:runtime-ready' }, '*'); } catch(_) {}
       throw new Error('Babel failed for ' + path + ': ' + e.message);
     }
   }
+
 
   FILES.forEach(function(f){
     var js = transform(f.path, f.code);
