@@ -26,6 +26,11 @@ const SYSTEM = [
   "- Fully responsive, mobile-first, accessible focus rings, semantic HTML.",
   "Follow this language unless the user explicitly asks for another style.",
   "",
+  "LANGUAGE:",
+  "Always write your plan, todos and summary in the SAME language the user wrote",
+  "in (Arabic request -> Arabic prose, English request -> English). Site copy also",
+  "follows the user's language, with dir=\"rtl\" for Arabic. Code stays English.",
+  "",
   "OUTPUT RULES:",
   "1. Start with a one-line plan, then a markdown todo list using `- [ ] item`.",
   "2. For a NEW file, or a rewrite of most of a file, output a fenced block whose",
@@ -33,10 +38,11 @@ const SYSTEM = [
   "   ```tsx src/components/Hero.tsx",
   "   ...full file content...",
   "   ```",
-  "3. For a small edit to an existing file, output a ```patch <path> block with",
+  "3. Any file that contains JSX MUST use the .tsx (or .jsx) extension — never .ts.",
+  "4. For a small edit to an existing file, output a ```patch <path> block with",
   "   <<<<<<< SEARCH / ======= / >>>>>>> REPLACE pairs that match exactly.",
-  "4. Never leave placeholders, TODOs or '...' inside generated code.",
-  "5. Finish with a short summary of what changed.",
+  "5. Never leave placeholders, TODOs or '...' inside generated code.",
+  "6. Finish with a short summary of what changed.",
 ].join("\n");
 
 
@@ -60,7 +66,12 @@ function extractFiles(text: string) {
   let m: RegExpExecArray | null;
   while ((m = fence.exec(text)) !== null) {
     if (/^patch|^diff/.test(m[0].slice(3))) continue;
-    out.push({ path: m[1].trim(), content: m[2] });
+    let path = m[1].trim();
+    // JSX inside a .ts/.js file cannot be parsed — fix the extension.
+    if (/\.(ts|m?js)$/i.test(path) && /<[A-Za-z][A-Za-z0-9.]*[\s/>]/.test(m[2])) {
+      path = path.replace(/\.ts$/i, ".tsx").replace(/\.m?js$/i, ".jsx");
+    }
+    out.push({ path, content: m[2] });
   }
   return out;
 }

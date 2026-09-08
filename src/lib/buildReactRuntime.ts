@@ -30,7 +30,10 @@ const REACT_PIN = "react@18.3.1,react-dom@18.3.1";
 /** Build an esm.sh URL for a bare npm package, adding ?deps= for peer-dep-sensitive ones. */
 function esmUrl(pkg: string, version?: string): string {
   const spec = version ? `${pkg}@${version}` : pkg;
-  const needsDeps = /^(@radix-ui\/|framer-motion|lucide-react|sonner|react-router|react-hook-form|@hookform\/|recharts|react-day-picker|cmdk|vaul|embla-carousel|@floating-ui\/react)/.test(pkg);
+  const needsDeps =
+    /^(@radix-ui\/|framer-motion|lucide-react|sonner|react-router|react-hook-form|@hookform\/|recharts|react-day-picker|cmdk|vaul|embla-carousel|@floating-ui\/react)/.test(
+      pkg,
+    );
   return `https://esm.sh/${spec}${needsDeps ? `?deps=${REACT_PIN}` : ""}`;
 }
 
@@ -64,12 +67,23 @@ function importMapFromPackageJson(files: ProjectFile[]): Record<string, string> 
   if (!pkgFile) return {};
   try {
     const pkg = JSON.parse(pkgFile.content);
-    const deps = { ...(pkg.dependencies || {}), ...(pkg.peerDependencies || {}) } as Record<string, string>;
+    const deps = { ...(pkg.dependencies || {}), ...(pkg.peerDependencies || {}) } as Record<
+      string,
+      string
+    >;
     const extra: Record<string, string> = {};
     for (const [name, ver] of Object.entries(deps)) {
       if (IMPORT_MAP[name]) continue;
-      if (/^(vite|@vitejs\/|typescript|eslint|prettier|tailwindcss|postcss|autoprefixer|@types\/)/.test(name)) continue;
-      const clean = String(ver || "").replace(/^[\^~>=<\s]+/, "").split(" ")[0] || undefined;
+      if (
+        /^(vite|@vitejs\/|typescript|eslint|prettier|tailwindcss|postcss|autoprefixer|@types\/)/.test(
+          name,
+        )
+      )
+        continue;
+      const clean =
+        String(ver || "")
+          .replace(/^[\^~>=<\s]+/, "")
+          .split(" ")[0] || undefined;
       extra[name] = esmUrl(name, clean);
     }
     return extra;
@@ -101,7 +115,11 @@ function isRunnable(f: ProjectFile): boolean {
 }
 
 /** Resolve `spec` (import specifier) from `fromPath` against the file list. */
-function resolveSpec(spec: string, fromPath: string, files: Map<string, ProjectFile>): string | null {
+function resolveSpec(
+  spec: string,
+  fromPath: string,
+  files: Map<string, ProjectFile>,
+): string | null {
   let target: string | null = null;
   if (spec.startsWith("@/")) target = "src/" + spec.slice(2);
   else if (spec.startsWith("./") || spec.startsWith("../")) {
@@ -125,11 +143,14 @@ function resolveSpec(spec: string, fromPath: string, files: Map<string, ProjectF
 /** Rewrite import/export specifiers in one file's source. */
 function rewriteImports(code: string, fromPath: string, files: Map<string, ProjectFile>): string {
   // Handle: import ... from '...';  export ... from '...';  import('...')
-  const re = /((?:^|[\s;{}()])(?:import|export)\s*(?:[^'"`;]*?\bfrom\s*)?|import\s*\()\s*(['"])([^'"]+)\2/g;
+  const re =
+    /((?:^|[\s;{}()])(?:import|export)\s*(?:[^'"`;]*?\bfrom\s*)?|import\s*\()\s*(['"])([^'"]+)\2/g;
   return code.replace(re, (full, head, quote, spec) => {
     if (spec.endsWith(".css") || spec.endsWith(".scss")) {
       // Drop CSS imports — Tailwind is loaded globally.
-      return head.trim().startsWith("import(") ? `${head}${quote}data:text/javascript,${quote}` : `/* css: ${spec} */`;
+      return head.trim().startsWith("import(")
+        ? `${head}${quote}data:text/javascript,${quote}`
+        : `/* css: ${spec} */`;
     }
     const resolved = resolveSpec(spec, fromPath, files);
     if (resolved) return `${head}${quote}virtual:${resolved}${quote}`;
@@ -178,18 +199,12 @@ export function isReactProject(files: ProjectFile[]): boolean {
  */
 /** Common helper files LLMs import but sometimes forget to emit. We shim them so imports resolve. */
 const SHIMS: Record<string, string> = {
-  "src/lib/utils.ts":
-    `import { clsx, type ClassValue } from "clsx";\nimport { twMerge } from "tailwind-merge";\nexport function cn(...inputs: ClassValue[]) { return twMerge(clsx(inputs)); }\n`,
-  "src/components/ui/button.tsx":
-    `import * as React from "react";\nimport { cn } from "@/lib/utils";\ntype Props = React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: string; size?: string; asChild?: boolean };\nexport const Button = React.forwardRef<HTMLButtonElement, Props>(({ className, variant, size, asChild: _asChild, ...props }, ref) => <button ref={ref} className={cn("inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50", variant === "outline" ? "border border-input bg-background hover:bg-accent hover:text-accent-foreground" : variant === "ghost" ? "hover:bg-accent hover:text-accent-foreground" : variant === "secondary" ? "bg-secondary text-secondary-foreground hover:bg-secondary/80" : "bg-primary text-primary-foreground hover:bg-primary/90", size === "sm" && "h-9 px-3", size === "lg" && "h-11 px-8", size === "icon" && "h-10 w-10 p-0", className)} {...props} />);\nButton.displayName = "Button";\n`,
-  "src/components/ui/card.tsx":
-    `import * as React from "react";\nimport { cn } from "@/lib/utils";\nexport const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({className,...props},ref)=><div ref={ref} className={cn("rounded-lg border bg-card text-card-foreground shadow-sm",className)} {...props}/>);\nexport const CardHeader = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({className,...props},ref)=><div ref={ref} className={cn("flex flex-col space-y-1.5 p-6",className)} {...props}/>);\nexport const CardTitle = React.forwardRef<HTMLHeadingElement, React.HTMLAttributes<HTMLHeadingElement>>(({className,...props},ref)=><h3 ref={ref} className={cn("text-2xl font-semibold leading-none tracking-tight",className)} {...props}/>);\nexport const CardDescription = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLParagraphElement>>(({className,...props},ref)=><p ref={ref} className={cn("text-sm text-muted-foreground",className)} {...props}/>);\nexport const CardContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({className,...props},ref)=><div ref={ref} className={cn("p-6 pt-0",className)} {...props}/>);\nexport const CardFooter = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({className,...props},ref)=><div ref={ref} className={cn("flex items-center p-6 pt-0",className)} {...props}/>);\n`,
-  "src/components/ui/input.tsx":
-    `import * as React from "react";\nimport { cn } from "@/lib/utils";\nexport const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(({className,type,...props},ref)=><input type={type} ref={ref} className={cn("flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",className)} {...props}/>);\nInput.displayName="Input";\n`,
-  "src/components/ui/textarea.tsx":
-    `import * as React from "react";\nimport { cn } from "@/lib/utils";\nexport const Textarea = React.forwardRef<HTMLTextAreaElement, React.TextareaHTMLAttributes<HTMLTextAreaElement>>(({className,...props},ref)=><textarea ref={ref} className={cn("flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",className)} {...props}/>);\nTextarea.displayName="Textarea";\n`,
-  "src/components/ui/badge.tsx":
-    `import * as React from "react";\nimport { cn } from "@/lib/utils";\nexport function Badge({ className, variant, ...props }: React.HTMLAttributes<HTMLDivElement> & { variant?: string }) { return <div className={cn("inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold", variant === "secondary" ? "bg-secondary text-secondary-foreground" : variant === "outline" ? "text-foreground" : "bg-primary text-primary-foreground", className)} {...props} />; }\n`,
+  "src/lib/utils.ts": `import { clsx, type ClassValue } from "clsx";\nimport { twMerge } from "tailwind-merge";\nexport function cn(...inputs: ClassValue[]) { return twMerge(clsx(inputs)); }\n`,
+  "src/components/ui/button.tsx": `import * as React from "react";\nimport { cn } from "@/lib/utils";\ntype Props = React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: string; size?: string; asChild?: boolean };\nexport const Button = React.forwardRef<HTMLButtonElement, Props>(({ className, variant, size, asChild: _asChild, ...props }, ref) => <button ref={ref} className={cn("inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50", variant === "outline" ? "border border-input bg-background hover:bg-accent hover:text-accent-foreground" : variant === "ghost" ? "hover:bg-accent hover:text-accent-foreground" : variant === "secondary" ? "bg-secondary text-secondary-foreground hover:bg-secondary/80" : "bg-primary text-primary-foreground hover:bg-primary/90", size === "sm" && "h-9 px-3", size === "lg" && "h-11 px-8", size === "icon" && "h-10 w-10 p-0", className)} {...props} />);\nButton.displayName = "Button";\n`,
+  "src/components/ui/card.tsx": `import * as React from "react";\nimport { cn } from "@/lib/utils";\nexport const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({className,...props},ref)=><div ref={ref} className={cn("rounded-lg border bg-card text-card-foreground shadow-sm",className)} {...props}/>);\nexport const CardHeader = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({className,...props},ref)=><div ref={ref} className={cn("flex flex-col space-y-1.5 p-6",className)} {...props}/>);\nexport const CardTitle = React.forwardRef<HTMLHeadingElement, React.HTMLAttributes<HTMLHeadingElement>>(({className,...props},ref)=><h3 ref={ref} className={cn("text-2xl font-semibold leading-none tracking-tight",className)} {...props}/>);\nexport const CardDescription = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLParagraphElement>>(({className,...props},ref)=><p ref={ref} className={cn("text-sm text-muted-foreground",className)} {...props}/>);\nexport const CardContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({className,...props},ref)=><div ref={ref} className={cn("p-6 pt-0",className)} {...props}/>);\nexport const CardFooter = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({className,...props},ref)=><div ref={ref} className={cn("flex items-center p-6 pt-0",className)} {...props}/>);\n`,
+  "src/components/ui/input.tsx": `import * as React from "react";\nimport { cn } from "@/lib/utils";\nexport const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(({className,type,...props},ref)=><input type={type} ref={ref} className={cn("flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",className)} {...props}/>);\nInput.displayName="Input";\n`,
+  "src/components/ui/textarea.tsx": `import * as React from "react";\nimport { cn } from "@/lib/utils";\nexport const Textarea = React.forwardRef<HTMLTextAreaElement, React.TextareaHTMLAttributes<HTMLTextAreaElement>>(({className,...props},ref)=><textarea ref={ref} className={cn("flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",className)} {...props}/>);\nTextarea.displayName="Textarea";\n`,
+  "src/components/ui/badge.tsx": `import * as React from "react";\nimport { cn } from "@/lib/utils";\nexport function Badge({ className, variant, ...props }: React.HTMLAttributes<HTMLDivElement> & { variant?: string }) { return <div className={cn("inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold", variant === "secondary" ? "bg-secondary text-secondary-foreground" : variant === "outline" ? "text-foreground" : "bg-primary text-primary-foreground", className)} {...props} />; }\n`,
 };
 
 /** Collect the project's own CSS so generated styles actually apply in the preview. */
@@ -233,7 +248,8 @@ export function buildReactRuntimeHtml(files: ProjectFile[], title = "Megsy Proje
   const importMapImports: Record<string, string> = { ...IMPORT_MAP, ...extraPkg };
   const filesPayload = JSON.stringify(rewritten);
   const projectCss = collectProjectCss(files);
-  const esc = (v: string) => v.replace(/[<>&"]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]!));
+  const esc = (v: string) =>
+    v.replace(/[<>&"]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" })[c]!);
   const description = `${title} — built with Megsy Coder.`;
   const entryPath = entry?.path || "src/main.tsx";
 
@@ -303,10 +319,18 @@ try { parent.postMessage({ type: 'megsy:runtime-ready' }, '*'); } catch(_) {}
   var ENTRY = ${JSON.stringify(entryPath)};
   var extraImports = {};
 
+  // Models often save JSX into a .ts/.js file. Babel only enables JSX parsing
+  // from the filename, so re-label those files before transforming.
+  function jsxFilename(path, code){
+    if (/\.(tsx|jsx)$/.test(path)) return path;
+    if (!/<[A-Za-z][A-Za-z0-9.]*[\s/>]/.test(code)) return path;
+    return path.replace(/\.ts$/, '.tsx').replace(/\.(m?js)$/, '.jsx');
+  }
+
   function transform(path, code){
     try{
       var out = Babel.transform(code, {
-        filename: path,
+        filename: jsxFilename(path, code),
         presets: [
           ['env', { modules: false, targets: { esmodules: true } }],
           'react',
@@ -319,6 +343,7 @@ try { parent.postMessage({ type: 'megsy:runtime-ready' }, '*'); } catch(_) {}
       throw new Error('Babel failed for ' + path + ': ' + e.message);
     }
   }
+
 
   FILES.forEach(function(f){
     var js = transform(f.path, f.code);

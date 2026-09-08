@@ -124,6 +124,11 @@ export function extractProjectFiles(content: string): ProjectFile[] {
     path = safeProjectPath(path);
     if (!path) continue;
     if (!/\.[a-z0-9]+$/i.test(path)) path = `${path}.${ext}`;
+    // Models sometimes save JSX into a .ts/.js file, which no bundler (and no
+    // in-browser Babel transform) can parse. Give it the extension it needs.
+    if (/\.(ts|m?js)$/i.test(path) && /<[A-Za-z][A-Za-z0-9.]*[\s/>]/.test(body)) {
+      path = path.replace(/\.ts$/i, ".tsx").replace(/\.m?js$/i, ".jsx");
+    }
     files.push({ path, lang, content: body });
   }
   return files;
@@ -137,7 +142,11 @@ export function buildProjectPreviewHtml(files: ProjectFile[]): string | null {
   // Vite/React-style entry HTML references .tsx/.jsx/.ts modules that the
   // browser cannot execute directly. Fall back to the bundle view so users
   // don't see a blank white iframe.
-  if (/<script\b[^>]*(?:type=["']module["'][^>]*src=|src=["'][^"']+\.(?:tsx|jsx|ts)["'])/i.test(html.content)) {
+  if (
+    /<script\b[^>]*(?:type=["']module["'][^>]*src=|src=["'][^"']+\.(?:tsx|jsx|ts)["'])/i.test(
+      html.content,
+    )
+  ) {
     return null;
   }
   const byName = new Map<string, ProjectFile>();
@@ -154,26 +163,33 @@ export function buildProjectPreviewHtml(files: ProjectFile[]): string | null {
     },
   );
   // Inline <script src="foo.js"></script>
-  out = out.replace(
-    /<script\b[^>]*src=["']([^"']+)["'][^>]*>\s*<\/script>/gi,
-    (full, src) => {
-      const key = src.split("/").pop() || src;
-      const f = byName.get(key);
-      return f ? `<script>\n${f.content}\n</script>` : full;
-    },
-  );
+  out = out.replace(/<script\b[^>]*src=["']([^"']+)["'][^>]*>\s*<\/script>/gi, (full, src) => {
+    const key = src.split("/").pop() || src;
+    const f = byName.get(key);
+    return f ? `<script>\n${f.content}\n</script>` : full;
+  });
 
   // If HTML did not reference sibling css/js, auto-inject them so the preview still works.
   const referenced = new Set<string>();
-  html.content.replace(/href=["']([^"']+)["']/gi, (_, v) => (referenced.add(v.split("/").pop() || v), ""));
-  html.content.replace(/src=["']([^"']+)["']/gi, (_, v) => (referenced.add(v.split("/").pop() || v), ""));
+  html.content.replace(
+    /href=["']([^"']+)["']/gi,
+    (_, v) => (referenced.add(v.split("/").pop() || v), ""),
+  );
+  html.content.replace(
+    /src=["']([^"']+)["']/gi,
+    (_, v) => (referenced.add(v.split("/").pop() || v), ""),
+  );
 
   const extraStyles = files
     .filter((f) => f.lang === "css" && !referenced.has(f.path.split("/").pop() || f.path))
     .map((f) => `<style>\n${f.content}\n</style>`)
     .join("\n");
   const extraScripts = files
-    .filter((f) => (f.lang === "js" || f.lang === "javascript") && !referenced.has(f.path.split("/").pop() || f.path))
+    .filter(
+      (f) =>
+        (f.lang === "js" || f.lang === "javascript") &&
+        !referenced.has(f.path.split("/").pop() || f.path),
+    )
     .map((f) => `<script>\n${f.content}\n</script>`)
     .join("\n");
 
@@ -232,23 +248,28 @@ ${entry ? `    <script type="module" src="/${entry.replace(/^\.?\//, "")}"></scr
     out.push({
       path: "package.json",
       lang: "json",
-      content: JSON.stringify(
-        {
-          name: projectName.toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-|-$/g, "") || "app",
-          private: true,
-          version: "0.0.0",
-          type: "module",
-          scripts: { dev: "vite", build: "vite build", preview: "vite preview" },
-          dependencies: { react: "^18.3.1", "react-dom": "^18.3.1" },
-          devDependencies: {
-            vite: "^5.4.0",
-            "@vitejs/plugin-react": "^4.3.1",
-            ...(ts ? { typescript: "^5.5.0" } : {}),
+      content:
+        JSON.stringify(
+          {
+            name:
+              projectName
+                .toLowerCase()
+                .replace(/[^a-z0-9-]+/g, "-")
+                .replace(/^-|-$/g, "") || "app",
+            private: true,
+            version: "0.0.0",
+            type: "module",
+            scripts: { dev: "vite", build: "vite build", preview: "vite preview" },
+            dependencies: { react: "^18.3.1", "react-dom": "^18.3.1" },
+            devDependencies: {
+              vite: "^5.4.0",
+              "@vitejs/plugin-react": "^4.3.1",
+              ...(ts ? { typescript: "^5.5.0" } : {}),
+            },
           },
-        },
-        null,
-        2,
-      ) + "\n",
+          null,
+          2,
+        ) + "\n",
     });
   }
 
@@ -307,4 +328,3 @@ npm run preview
 
   return out;
 }
-
