@@ -30,7 +30,7 @@ import {
   getPlan,
   type PlanTier,
 } from "@/data/pricingData";
-import { markCheckoutOpened, hasAbandonedCheckout } from "@/lib/pricingOffers";
+import { markCheckoutOpened, hasAbandonedCheckout, INTRO_PRICE } from "@/lib/pricingOffers";
 import { dodoProductId } from "@/lib/dodoCatalog";
 
 
@@ -734,7 +734,7 @@ const PricingPage = () => {
                   {"Limited Launch Offer"}
                 </span>
                 <p className="text-[13px] text-foreground/90 leading-relaxed max-w-[16rem] sm:max-w-[18rem]">
-                  {`Pro first month $${INTRO_PRICE} — then $${PRO_MONTHLY_PRICE}/month`}
+                  {`Pro first month $${INTRO_PRICE} — then $20/month`}
                 </p>
 
               </div>
