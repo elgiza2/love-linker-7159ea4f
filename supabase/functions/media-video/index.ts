@@ -17,6 +17,7 @@ import {
   DEAPI_VIDEO,
   deapiVideoSubmit,
   normalizeVideoSlug,
+  novitaVideoSubmit,
   providerForSlug,
   renderfulVideoSubmit,
 } from "../_shared/videoProviders.ts";
@@ -120,9 +121,12 @@ Deno.serve(async (req) => {
   if (!prompt) return json({ error: true, message: "prompt is required" }, 400);
 
   const modelSlug = String(body?.model_slug ?? "").trim() || "wan2.6-t2v";
-  const duration = Math.max(2, Math.min(10, Number(body?.duration ?? 5) || 5));
+  const duration = Math.max(2, Math.min(15, Number(body?.duration ?? 5) || 5));
   const aspectRatio = typeof body?.aspect_ratio === "string" ? body.aspect_ratio : undefined;
+  const resolution = typeof body?.resolution === "string" ? body.resolution : undefined;
   const startFrame = typeof body?.start_frame === "string" ? body.start_frame : undefined;
+  const endFrame = typeof body?.end_frame === "string" ? body.end_frame : undefined;
+  const videoUrl = typeof body?.video_url === "string" ? body.video_url : undefined;
 
   const unlimited = isUnlimitedModel(modelSlug);
 
@@ -177,6 +181,20 @@ Deno.serve(async (req) => {
         duration,
         aspectRatio,
         image: startFrame,
+      });
+    } else if (provider === "novita") {
+      const key = Deno.env.get("NOVITA_API_KEY");
+      if (!key) throw new Error("Novita key is not configured");
+      generationId = await novitaVideoSubmit({
+        key,
+        slug,
+        prompt,
+        duration,
+        aspectRatio,
+        resolution,
+        image: startFrame,
+        lastFrame: endFrame,
+        videoUrl,
       });
     } else {
       const acquired = await acquireKey(provider, slug);

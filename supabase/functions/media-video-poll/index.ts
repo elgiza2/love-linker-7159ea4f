@@ -4,7 +4,7 @@
  * Response: { status: "processing"|"completed"|"failed", progress?, video_url? }
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import { deapiVideoPoll, renderfulVideoPoll } from "../_shared/videoProviders.ts";
+import { deapiVideoPoll, novitaVideoPoll, renderfulVideoPoll } from "../_shared/videoProviders.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -82,13 +82,20 @@ Deno.serve(async (req) => {
     return json({ status: "failed", error: job.error ?? "video job failed" });
   }
 
-  // DeAPI / Renderful jobs poll with the function secret for that provider.
-  if (job.provider === "deapi" || job.provider === "renderful") {
-    const key = Deno.env.get(job.provider === "deapi" ? "DEAPI_API_KEY" : "RENDERFUL_API_KEY");
+  // DeAPI / Renderful / Novita jobs poll with the function secret for that provider.
+  if (job.provider === "deapi" || job.provider === "renderful" || job.provider === "novita") {
+    const secretName = job.provider === "deapi"
+      ? "DEAPI_API_KEY"
+      : job.provider === "renderful"
+      ? "RENDERFUL_API_KEY"
+      : "NOVITA_API_KEY";
+    const key = Deno.env.get(secretName);
     if (!key) return json({ status: "failed", error: `${job.provider} key is not configured` });
     const result = job.provider === "deapi"
       ? await deapiVideoPoll(key, String(job.generation_id))
-      : await renderfulVideoPoll(key, String(job.generation_id));
+      : job.provider === "renderful"
+      ? await renderfulVideoPoll(key, String(job.generation_id))
+      : await novitaVideoPoll(key, String(job.generation_id));
 
     if (result.status === "completed") {
       await admin
