@@ -227,11 +227,11 @@ async function deapiGenerate(opts: {
     );
     if (blobs.length === 1) form.append("image", blobs[0].blob, blobs[0].name);
     else for (const b of blobs) form.append("images[]", b.blob, b.name);
-    res = await fetch(endpoint, {
+    ({ res, text } = await fetchWithRetry(endpoint, {
       method: "POST",
       headers: { Authorization: `Bearer ${opts.key}`, Accept: "application/json" },
       body: form,
-    });
+    }));
   } else {
     const [width, height] = opts.aspectRatio === "9:16" ? [768, 1344]
       : opts.aspectRatio === "16:9" ? [1344, 768]
