@@ -30,10 +30,73 @@ export function renderfulModelId(slug: string, i2v: boolean): string {
 }
 
 
+/**
+ * Novita AI — open-weight video models (Wan family, Apache-2.0 weights) served
+ * either through the unified endpoint (`/v3/video/create`, flat body + `model`)
+ * or through a model-native async endpoint (`/v3/async/<path>`, flat body).
+ */
+export const NOVITA_BASE = "https://api.novita.ai";
+
+export type NovitaVideoConfig = {
+  /** unified `model` id, or the native endpoint path when `native` is set */
+  model: string;
+  native?: string;
+  i2v?: boolean;
+  v2v?: boolean;
+  /** unified i2v models take a `resolution` tier instead of an explicit size */
+  resolutionTier?: boolean;
+  maxDuration: number;
+  fixedDuration?: number;
+};
+
+export const NOVITA_VIDEO: Record<string, NovitaVideoConfig> = {
+  "novita-wan-2.2-t2v": { model: "wan2.2_t2v", maxDuration: 5, fixedDuration: 5 },
+  "novita-wan-2.2-i2v": {
+    model: "wan2.2_i2v",
+    i2v: true,
+    resolutionTier: true,
+    maxDuration: 5,
+    fixedDuration: 5,
+  },
+  "novita-wan-2.5-t2v": { model: "wan2.5_preview_t2v", maxDuration: 10 },
+  "novita-wan-2.5-i2v": {
+    model: "wan2.5_preview_i2v",
+    i2v: true,
+    resolutionTier: true,
+    maxDuration: 10,
+  },
+  "novita-wan-2.6-t2v": { model: "wan2.6_t2v", maxDuration: 15 },
+  "novita-wan-2.6-i2v": {
+    model: "wan2.6_i2v",
+    i2v: true,
+    resolutionTier: true,
+    maxDuration: 15,
+  },
+  "novita-wan-2.6-v2v": {
+    model: "wan2.6_v2v",
+    i2v: true,
+    v2v: true,
+    resolutionTier: true,
+    maxDuration: 15,
+  },
+  "novita-wan-2.7-t2v": { model: "wan2.7_t2v", native: "wan2.7-t2v", maxDuration: 15 },
+  "novita-wan-2.7-i2v": {
+    model: "wan2.7_i2v",
+    native: "wan2.7-i2v",
+    i2v: true,
+    resolutionTier: true,
+    maxDuration: 15,
+  },
+};
+
 export const VIDEO_SLUG_ALIASES: Record<string, string> = {
   "deapi-ltx-2": "deapi-ltx-video",
   "deapi-video": "deapi-ltx-video",
   "ltx-video": "deapi-ltx-video",
+  "novita-wan-2.2": "novita-wan-2.2-t2v",
+  "novita-wan-2.5": "novita-wan-2.5-t2v",
+  "novita-wan-2.6": "novita-wan-2.6-t2v",
+  "novita-wan-2.7": "novita-wan-2.7-t2v",
 };
 
 export function normalizeVideoSlug(slug: string): string {
@@ -41,11 +104,22 @@ export function normalizeVideoSlug(slug: string): string {
   return VIDEO_SLUG_ALIASES[s] ?? s;
 }
 
-export function providerForSlug(slug: string): "deapi" | "renderful" | "alibaba" {
+export function providerForSlug(slug: string): "deapi" | "renderful" | "alibaba" | "novita" {
+  if (/^novita/i.test(slug)) return "novita";
   if (/^wan|^alibaba|dashscope/i.test(slug)) return "alibaba";
   if (/^renderful/i.test(slug)) return "renderful";
   return "deapi";
 }
+
+/** Novita size strings for the resolutions the Wan models accept. */
+export function novitaSize(aspect: string | undefined, hd: boolean): string {
+  if (aspect === "9:16") return hd ? "1080*1920" : "720*1280";
+  if (aspect === "1:1") return hd ? "1440*1440" : "960*960";
+  if (aspect === "4:3") return hd ? "1632*1248" : "1088*832";
+  if (aspect === "3:4") return hd ? "1248*1632" : "832*1088";
+  return hd ? "1920*1080" : "1280*720";
+}
+
 
 export function firstVideoUrl(value: unknown, depth = 0): string | null {
   if (depth > 6 || value == null) return null;
