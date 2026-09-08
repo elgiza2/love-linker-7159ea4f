@@ -137,7 +137,6 @@ export const ChatMessagesArea = forwardRef<HTMLDivElement, ChatMessagesAreaProps
             {/* Desktop greeting moved into the composer dock (above input) so it
                 sits flush against the prompt box per product direction. */}
           </div>
-
         ) : (
           <div className="relative z-[1]">
             <Suspense fallback={<div className="pt-20 pb-44" aria-hidden />}>

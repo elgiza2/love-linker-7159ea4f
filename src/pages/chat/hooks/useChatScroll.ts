@@ -17,13 +17,8 @@ export function useChatScroll(params: {
   setShowScrollBtn: (next: boolean) => void;
   setNewMessagesCount: (next: number | ((prev: number) => number)) => void;
 }) {
-  const {
-    messages,
-    messagesContainerRef,
-    messagesEndRef,
-    setShowScrollBtn,
-    setNewMessagesCount,
-  } = params;
+  const { messages, messagesContainerRef, messagesEndRef, setShowScrollBtn, setNewMessagesCount } =
+    params;
   void params.isLoading;
 
   const handleScroll = useCallback(() => {
@@ -63,7 +58,6 @@ export function useChatScroll(params: {
   // The user must stay free to scroll anywhere (read the reply from the top,
   // scroll up to earlier messages, etc.) while the model keeps typing.
   // A floating "scroll to bottom" button + unread counter handles catching up.
-
 
   return { handleScroll, scrollToBottom };
 }

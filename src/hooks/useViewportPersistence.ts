@@ -11,9 +11,7 @@ export function useViewportPersistence(
   key: string = "megsy_chat_anchor",
 ) {
   const anchorRef = useRef<{ id: string; offset: number } | null>(null);
-  const viewportWidthRef = useRef(
-    typeof window === "undefined" ? 0 : window.innerWidth,
-  );
+  const viewportWidthRef = useRef(typeof window === "undefined" ? 0 : window.innerWidth);
 
   useEffect(() => {
     const scroller = scrollerRef.current;
@@ -27,10 +25,7 @@ export function useViewportPersistence(
           .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
         if (visible) {
           const el = visible.target as HTMLElement;
-          const id =
-            el.getAttribute("data-msg-anchor") ||
-            el.getAttribute("data-message-id") ||
-            "";
+          const id = el.getAttribute("data-msg-anchor") || el.getAttribute("data-message-id") || "";
           if (!id) return;
           const rect = el.getBoundingClientRect();
           const scrollerRect = scroller.getBoundingClientRect();
