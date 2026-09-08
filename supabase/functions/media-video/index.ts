@@ -182,6 +182,20 @@ Deno.serve(async (req) => {
         aspectRatio,
         image: startFrame,
       });
+    } else if (provider === "novita") {
+      const key = Deno.env.get("NOVITA_API_KEY");
+      if (!key) throw new Error("Novita key is not configured");
+      generationId = await novitaVideoSubmit({
+        key,
+        slug,
+        prompt,
+        duration,
+        aspectRatio,
+        resolution,
+        image: startFrame,
+        lastFrame: endFrame,
+        videoUrl,
+      });
     } else {
       const acquired = await acquireKey(provider, slug);
       if (!acquired) throw new Error("No Alibaba/DashScope media provider key is configured");

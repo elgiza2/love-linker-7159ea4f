@@ -4,7 +4,7 @@
  * Response: { status: "processing"|"completed"|"failed", progress?, video_url? }
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import { deapiVideoPoll, renderfulVideoPoll } from "../_shared/videoProviders.ts";
+import { deapiVideoPoll, novitaVideoPoll, renderfulVideoPoll } from "../_shared/videoProviders.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
