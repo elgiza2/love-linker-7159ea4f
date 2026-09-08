@@ -17,20 +17,29 @@ export function useChatScroll(params: {
   setShowScrollBtn: (next: boolean) => void;
   setNewMessagesCount: (next: number | ((prev: number) => number)) => void;
 }) {
-  const { messages, messagesContainerRef, messagesEndRef, setShowScrollBtn, setNewMessagesCount } =
-    params;
-  void params.isLoading;
+  const {
+    messages,
+    isLoading,
+    messagesContainerRef,
+    messagesEndRef,
+    setShowScrollBtn,
+    setNewMessagesCount,
+  } = params;
+  void messagesEndRef;
+  const pinnedToBottomRef = useRef(true);
 
   const handleScroll = useCallback(() => {
     const el = messagesContainerRef.current;
     if (!el) return;
     const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    pinnedToBottomRef.current = distFromBottom < 120;
     setShowScrollBtn(distFromBottom > 200);
     if (distFromBottom < 100) setNewMessagesCount(0);
   }, [messagesContainerRef, setShowScrollBtn, setNewMessagesCount]);
 
   const scrollToBottom = useCallback(() => {
     const el = messagesContainerRef.current;
+    pinnedToBottomRef.current = true;
     if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
     setNewMessagesCount(0);
   }, [messagesContainerRef, setNewMessagesCount]);
@@ -46,6 +55,7 @@ export function useChatScroll(params: {
       messages.length > 0 &&
       messages[messages.length - 1].role === "user"
     ) {
+      pinnedToBottomRef.current = true;
       const frame = requestAnimationFrame(() => {
         const el = messagesContainerRef.current;
         if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
@@ -54,10 +64,29 @@ export function useChatScroll(params: {
     }
   }, [messages.length, messagesContainerRef]);
 
-  // Intentionally NO auto-scroll during assistant streaming.
-  // The user must stay free to scroll anywhere (read the reply from the top,
-  // scroll up to earlier messages, etc.) while the model keeps typing.
-  // A floating "scroll to bottom" button + unread counter handles catching up.
+  // Keep a reply pinned only while the user remains near the bottom. A manual
+  // upward scroll releases the pin immediately, so streaming never fights the
+  // user's touch gesture or makes the transcript feel frozen.
+  useEffect(() => {
+    const el = messagesContainerRef.current;
+    if (!el || !isLoading) return;
+    const content = el.firstElementChild;
+    if (!(content instanceof HTMLElement)) return;
+
+    let frame = 0;
+    const observer = new ResizeObserver(() => {
+      if (!pinnedToBottomRef.current) return;
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        el.scrollTop = el.scrollHeight;
+      });
+    });
+    observer.observe(content);
+    return () => {
+      observer.disconnect();
+      cancelAnimationFrame(frame);
+    };
+  }, [isLoading, messagesContainerRef]);
 
   return { handleScroll, scrollToBottom };
 }

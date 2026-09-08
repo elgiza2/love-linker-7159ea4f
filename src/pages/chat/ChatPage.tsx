@@ -13,7 +13,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { MAX_CHAT_MESSAGE_CHARS } from "@/lib/validation/schemas";
 import { Button } from "@/components/ui/button";
 import { callServerEndpoint } from "@/lib/api/callServerEndpoint";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 
 import { getCachedUser } from "@/lib/cachedUser";
@@ -132,24 +139,31 @@ import { loadConversationMembers } from "./services/loadConversationMembers";
 // Heavy turn/resume services — dynamic-imported on demand. These only run
 // after the user sends a message or when resuming background jobs, so they
 // should never be in the initial /chat chunk. Total savings: ~2500 LOC.
-const resumeDocsJobs = (...args: Parameters<typeof import("./services/resumeDocsJobs").resumeDocsJobs>) =>
-  import("./services/resumeDocsJobs").then((m) => m.resumeDocsJobs(...args));
-const resumeSlidesJobs = (...args: Parameters<typeof import("./services/resumeSlidesJobs").resumeSlidesJobs>) =>
-  import("./services/resumeSlidesJobs").then((m) => m.resumeSlidesJobs(...args));
-const resumeChatJobs = (...args: Parameters<typeof import("./services/resumeChatJobs").resumeChatJobs>) =>
-  import("./services/resumeChatJobs").then((m) => m.resumeChatJobs(...args));
-const runOperatorTurn = (...args: Parameters<typeof import("./services/runOperatorTurn").runOperatorTurn>) =>
-  import("./services/runOperatorTurn").then((m) => m.runOperatorTurn(...args));
-const runComputerTurn = (...args: Parameters<typeof import("./services/runComputerTurn").runComputerTurn>) =>
-  import("./services/runComputerTurn").then((m) => m.runComputerTurn(...args));
+const resumeDocsJobs = (
+  ...args: Parameters<typeof import("./services/resumeDocsJobs").resumeDocsJobs>
+) => import("./services/resumeDocsJobs").then((m) => m.resumeDocsJobs(...args));
+const resumeSlidesJobs = (
+  ...args: Parameters<typeof import("./services/resumeSlidesJobs").resumeSlidesJobs>
+) => import("./services/resumeSlidesJobs").then((m) => m.resumeSlidesJobs(...args));
+const resumeChatJobs = (
+  ...args: Parameters<typeof import("./services/resumeChatJobs").resumeChatJobs>
+) => import("./services/resumeChatJobs").then((m) => m.resumeChatJobs(...args));
+const runOperatorTurn = (
+  ...args: Parameters<typeof import("./services/runOperatorTurn").runOperatorTurn>
+) => import("./services/runOperatorTurn").then((m) => m.runOperatorTurn(...args));
+const runComputerTurn = (
+  ...args: Parameters<typeof import("./services/runComputerTurn").runComputerTurn>
+) => import("./services/runComputerTurn").then((m) => m.runComputerTurn(...args));
 const runMediaTurn = (...args: Parameters<typeof import("./services/runMediaTurn").runMediaTurn>) =>
   import("./services/runMediaTurn").then((m) => m.runMediaTurn(...args));
-const runSlidesTurn = (...args: Parameters<typeof import("./services/runSlidesTurn").runSlidesTurn>) =>
-  import("./services/runSlidesTurn").then((m) => m.runSlidesTurn(...args));
+const runSlidesTurn = (
+  ...args: Parameters<typeof import("./services/runSlidesTurn").runSlidesTurn>
+) => import("./services/runSlidesTurn").then((m) => m.runSlidesTurn(...args));
 const runDocsTurn = (...args: Parameters<typeof import("./services/runDocsTurn").runDocsTurn>) =>
   import("./services/runDocsTurn").then((m) => m.runDocsTurn(...args));
-const runChatStreamTurn = (...args: Parameters<typeof import("./services/runChatStreamTurn").runChatStreamTurn>) =>
-  import("./services/runChatStreamTurn").then((m) => m.runChatStreamTurn(...args));
+const runChatStreamTurn = (
+  ...args: Parameters<typeof import("./services/runChatStreamTurn").runChatStreamTurn>
+) => import("./services/runChatStreamTurn").then((m) => m.runChatStreamTurn(...args));
 import {
   generateShortTitle as apiGenerateShortTitle,
   createOrUpdateConversation as apiCreateOrUpdateConversation,
@@ -174,7 +188,9 @@ const preloadPlusMenu = () => {
 // nothing is fetched. Idle preload is done once for the intro on the first
 // paint of a fresh chat so it feels instant when it does open.
 const MobileServicePanelRenderer = lazy(() =>
-  import("./components/MobileServicePanelRenderer").then((m) => ({ default: m.MobileServicePanelRenderer })),
+  import("./components/MobileServicePanelRenderer").then((m) => ({
+    default: m.MobileServicePanelRenderer,
+  })),
 );
 const ChatDialogs = lazy(() =>
   import("./components/ChatDialogs").then((m) => ({ default: m.ChatDialogs })),
@@ -222,8 +238,7 @@ const ChatPage = () => {
     if (typeof window === "undefined") return;
     const mobileNow = window.matchMedia?.("(max-width: 767px)").matches ?? false;
     const ric = (window as any).requestIdleCallback as
-      | ((cb: () => void, opts?: { timeout?: number }) => number)
-      | undefined;
+      ((cb: () => void, opts?: { timeout?: number }) => number) | undefined;
     const run = () => {
       warmEdgeFunctions();
       // The "+" sheet is the most-tapped mobile action — warm it on idle too so
@@ -242,7 +257,9 @@ const ChatPage = () => {
       void import("@/components/chat/IntegrationsSheet").catch(() => {});
       void import("@/components/chat/integrations/IntegrationRow").catch(() => {});
     }, 300);
-    const id = ric ? ric(run, { timeout: mobileNow ? 2500 : 1500 }) : window.setTimeout(run, mobileNow ? 1500 : 1000);
+    const id = ric
+      ? ric(run, { timeout: mobileNow ? 2500 : 1500 })
+      : window.setTimeout(run, mobileNow ? 1500 : 1000);
     return () => {
       clearTimeout(warmSheets);
       if (ric && (window as any).cancelIdleCallback) (window as any).cancelIdleCallback(id);
@@ -311,15 +328,19 @@ const ChatPage = () => {
   }, [sidebarOpen]);
   const [sidebarCollapsed] = useSidebarCollapsed();
 
-  const [coderRuns, setCoderRuns] = useState<{
-    id: string;
-    prompt: string;
-    conversationPromise: Promise<string | null>;
-    /** Hosted URLs for media the user attached to this Coder turn. */
-    attachments?: Array<{ url: string; name?: string; type?: string }>;
-  }[]>([]);
+  const [coderRuns, setCoderRuns] = useState<
+    {
+      id: string;
+      prompt: string;
+      conversationPromise: Promise<string | null>;
+      /** Hosted URLs for media the user attached to this Coder turn. */
+      attachments?: Array<{ url: string; name?: string; type?: string }>;
+    }[]
+  >([]);
 
-  const [coderProjectFiles, setCoderProjectFiles] = useState<Record<string, { path: string; content: string }[]>>({});
+  const [coderProjectFiles, setCoderProjectFiles] = useState<
+    Record<string, { path: string; content: string }[]>
+  >({});
   const savedCoderRunIdsRef = useRef<Set<string>>(new Set());
 
   // A Coder run can end before the model calls `finish` (iteration/token cap).
@@ -328,12 +349,19 @@ const ChatPage = () => {
   useEffect(() => {
     const onContinue = (e: Event) => {
       const detail = (e as CustomEvent).detail as { prompt?: string } | undefined;
-      const promptText = (detail?.prompt || "Continue the previous build and finish the remaining tasks.").trim();
+      const promptText = (
+        detail?.prompt || "Continue the previous build and finish the remaining tasks."
+      ).trim();
       const runId = `coder-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       const conversationPromise = createOrUpdateConversation(promptText).catch(() => null);
       setMessages((prev) => [
         ...prev,
-        { role: "user", clientId: `user-coder-${Date.now()}`, content: promptText, mode: "code" } as Message,
+        {
+          role: "user",
+          clientId: `user-coder-${Date.now()}`,
+          content: promptText,
+          mode: "code",
+        } as Message,
       ]);
       setCoderRuns((prev) => [...prev, { id: runId, prompt: promptText, conversationPromise }]);
       void (async () => {
@@ -349,8 +377,7 @@ const ChatPage = () => {
   }, []);
   const isSidebarExpanded = !sidebarCollapsed;
   const desktopSidebarWidth = isSidebarExpanded ? 320 : 60;
-  const { plusMenuOpen, setPlusMenuOpen, plusView, setPlusView } =
-    usePlusMenu();
+  const { plusMenuOpen, setPlusMenuOpen, plusView, setPlusView } = usePlusMenu();
   const isMobileViewport = useIsMobile();
   // Edge-swipe to open the sidebar is owned by MobilePushShell.
   // A second copy used to run here and fought it for every touch,
@@ -423,8 +450,7 @@ const ChatPage = () => {
       if (!raw) return;
       sessionStorage.removeItem("megsy_launch_app");
       const parsed = JSON.parse(raw) as
-        | { kind: "mode"; mode: string }
-        | { kind: "agent"; agent: string };
+        { kind: "mode"; mode: string } | { kind: "agent"; agent: string };
       if (parsed?.kind === "mode" && typeof parsed.mode === "string") {
         setSelectedAgent(null);
         setChatMode(parsed.mode as any);
@@ -528,12 +554,8 @@ const ChatPage = () => {
     isDeleting,
     setIsDeleting,
   } = useChatRename();
-  const {
-    pendingQuestions,
-    setPendingQuestions,
-    activeResearchJobId,
-    setActiveResearchJobId,
-  } = usePendingQuestions();
+  const { pendingQuestions, setPendingQuestions, activeResearchJobId, setActiveResearchJobId } =
+    usePendingQuestions();
   const {
     inviteDialogOpen,
     setInviteDialogOpen,
@@ -621,10 +643,7 @@ const ChatPage = () => {
   } = useIntegrationsUi();
 
   // Megsy OS is restricted to Pro plans and above.
-  const isProPlusPlan = useCallback(
-    () => isPaidUser(userPlan),
-    [userPlan],
-  );
+  const isProPlusPlan = useCallback(() => isPaidUser(userPlan), [userPlan]);
 
   const tryActivateMegsyOs = useCallback(() => {
     if (!isProPlusPlan()) {
@@ -758,9 +777,10 @@ const ChatPage = () => {
     if (isThinking) state = "thinking";
     else if (isLoading) {
       const m = chatMode;
-      state = m === "images" || m === "video" || m === "slides" || m === "slides-images"
-        ? "generating"
-        : "sending";
+      state =
+        m === "images" || m === "video" || m === "slides" || m === "slides-images"
+          ? "generating"
+          : "sending";
     }
     if (state === "idle") body.removeAttribute("data-chat-state");
     else body.setAttribute("data-chat-state", state);
@@ -784,7 +804,7 @@ const ChatPage = () => {
   // scroll-position persistence across viewport / orientation changes so
   // switching mobile ↔ desktop keeps the user on the same message.
   useChatTableLabels(messagesContainerRef);
-  useViewportPersistence(messagesContainerRef);
+  useViewportPersistence(messagesContainerRef, "megsy_chat_anchor", !isLoading);
 
   // Thin wrappers around services/conversationApi.ts so call sites stay terse
   // and the page is not littered with supabase plumbing.
@@ -934,7 +954,6 @@ const ChatPage = () => {
     }
   }, [messages]);
 
-
   /**
    * Step 4 of the docs workflow: writes the real file from an approved plan
    * (outline + deep-research references + imported file data + reviewed text),
@@ -987,7 +1006,6 @@ const ChatPage = () => {
     return () => window.removeEventListener("megsy:docs-generate", onDocsGenerate);
   }, [startDocsFromPlan]);
 
-
   /**
    * "عدّل السلايد 3 …" — rewrites a single slide of the latest plan and
    * regenerates the deck from the updated plan, preserving everything else.
@@ -1021,7 +1039,9 @@ const ChatPage = () => {
         userId: chatUserId || undefined,
       }).catch(() => null);
       if (!revised) {
-        toast.error(plan.language === "ar" ? "Could not edit that slide" : "Could not edit that slide");
+        toast.error(
+          plan.language === "ar" ? "Could not edit that slide" : "Could not edit that slide",
+        );
         setIsLoading(false);
         setIsThinking(false);
         return;
@@ -1057,7 +1077,6 @@ const ChatPage = () => {
     },
     [chatUserId, setMessages, setIsLoading, setIsThinking, startSlidesFromPlan],
   );
-
 
   // Stable per-user color palette resolver (hash → palette).
   const colorForUser = useMemberColors();
@@ -1160,7 +1179,8 @@ const ChatPage = () => {
           .eq("project_id", id)
           .in("message_id", messageIds as string[]);
         (feedbackRows || []).forEach((row: any) => {
-          feedbackByMessageId[row.message_id] = row.value === "up" ? true : row.value === "down" ? false : null;
+          feedbackByMessageId[row.message_id] =
+            row.value === "up" ? true : row.value === "down" ? false : null;
         });
       }
       setMessages(
@@ -1213,9 +1233,15 @@ const ChatPage = () => {
         // Put the caret in the composer so the handed-over text is obviously
         // editable and one Enter away from being sent.
         requestAnimationFrame(() => {
-          const el = document.querySelector<HTMLTextAreaElement>("textarea[data-chat-composer], form textarea");
+          const el = document.querySelector<HTMLTextAreaElement>(
+            "textarea[data-chat-composer], form textarea",
+          );
           el?.focus();
-          try { el?.setSelectionRange(text.length, text.length); } catch { /* ignore */ }
+          try {
+            el?.setSelectionRange(text.length, text.length);
+          } catch {
+            /* ignore */
+          }
         });
       }
     };
@@ -1223,7 +1249,6 @@ const ChatPage = () => {
     return () => window.removeEventListener("megsy:prefill-composer", handler as EventListener);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
 
   // Remix handoff from SharedChatPage: read the shared prompt from
   // sessionStorage on mount when the URL carries `?remix=1`, pre-fill the
@@ -1242,7 +1267,9 @@ const ChatPage = () => {
         const next = window.location.pathname + (params.toString() ? `?${params}` : "");
         window.history.replaceState({}, "", next);
       }
-    } catch { /* storage disabled */ }
+    } catch {
+      /* storage disabled */
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -1267,12 +1294,6 @@ const ChatPage = () => {
     void loadConversation(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-
-
-
-
-
 
   const handleCancel = useChatCancel({
     abortControllerRef,
@@ -1376,7 +1397,6 @@ const ChatPage = () => {
   // as the routed mode is applied (setChatMode is async).
   const pendingAutoSendRef = useRef<{ text: string; mode: ChatMode } | null>(null);
 
-
   const handleSendWithText = async (overrideText?: string) => {
     const hadText = String(overrideText ?? input).trim().length > 0;
     try {
@@ -1407,7 +1427,6 @@ const ChatPage = () => {
       }, 400);
     }
   };
-
 
   const handleSendWithTextInner = async (overrideText?: string) => {
     const text = overrideText || input;
@@ -1459,7 +1478,9 @@ const ChatPage = () => {
           else if (chatMode === "slides" || chatMode === "slides-images") track("slides_created");
         } catch {}
         bumpStreak();
-      } catch { /* non-fatal */ }
+      } catch {
+        /* non-fatal */
+      }
     })();
 
     // Guard: oversized prompts are almost always a paste accident — refuse
@@ -1470,10 +1491,6 @@ const ChatPage = () => {
       );
       return;
     }
-
-
-
-
 
     // Project-producing modes require an authenticated user so generated work
     // can be saved safely. Access itself is not restricted to paid plans.
@@ -1531,7 +1548,9 @@ const ChatPage = () => {
       void (async () => {
         const resolvedConversationId = await conversationPromise;
         if (!resolvedConversationId) return;
-        const insertedId = await saveMessage(resolvedConversationId, "user", promptText).catch(() => undefined);
+        const insertedId = await saveMessage(resolvedConversationId, "user", promptText).catch(
+          () => undefined,
+        );
         if (insertedId) {
           ownInsertedIdsRef.current.add(insertedId);
           window.dispatchEvent(new CustomEvent("megsy:conversations-changed"));
@@ -1546,7 +1565,6 @@ const ChatPage = () => {
       })();
       return;
     }
-
 
     // Video used to be subscribers-only; the free DeAPI video models make
     // basic video generation free for everyone. Only a paid video model
@@ -1584,7 +1602,6 @@ const ChatPage = () => {
       // No model picked yet → fall through so the media-mode block prompts
       // the user to choose (and auto-picks the default free model).
     }
-
 
     if (chatMode === "images" && (mediaModel as any)?.isPremium && !isPaidPlan) {
       setMessages((prev) => [
@@ -1633,8 +1650,7 @@ const ChatPage = () => {
     const userMsg: Message = {
       role: "user",
       clientId: `user-${localTurnId}`,
-      content:
-        text || (attachedFiles.length > 0 ? `[${attachedFiles.length} attachment(s)]` : ""),
+      content: text || (attachedFiles.length > 0 ? `[${attachedFiles.length} attachment(s)]` : ""),
       attachedImages: imageAttachments.map((f) => f.data),
       attachedVideos: videoAttachments.map((f) => f.data),
       attachedFiles: [
@@ -1705,9 +1721,8 @@ const ChatPage = () => {
       }
       if (intent.use) pendingComputerIntentRef.current = intent.task || text;
       if (chatMode !== "operator" && intent.use) {
-        const { canRunComputerTask, recordComputerTask, computerDailyLimit } = await import(
-          "@/lib/computer/usageLimits"
-        );
+        const { canRunComputerTask, recordComputerTask, computerDailyLimit } =
+          await import("@/lib/computer/usageLimits");
         if (!canRunComputerTask(userPlan)) {
           toast.error(
             `Agent daily limit reached (${computerDailyLimit(userPlan)} tasks/day). Upgrade for more.`,
@@ -1736,7 +1751,6 @@ const ChatPage = () => {
         return;
       }
     }
-
 
     // ── Operator mode: keep the normal chat flow; render operator output as the assistant reply ──
     if (chatMode === "operator") {
@@ -1767,9 +1781,8 @@ const ChatPage = () => {
     let autoMediaModel: typeof mediaModel = null;
     if (chatMode === "normal" && text.trim()) {
       try {
-        const { detectMediaIntent, pickDefaultMediaModel } = await import(
-          "@/lib/media/autoMediaIntent"
-        );
+        const { detectMediaIntent, pickDefaultMediaModel } =
+          await import("@/lib/media/autoMediaIntent");
         const intent = detectMediaIntent(text);
         if (intent) {
           const picked =
@@ -1794,7 +1807,9 @@ const ChatPage = () => {
       const expectedMediaType = activeMediaMode === "video" ? "video" : "image";
       if (!activeMediaModel || activeMediaModel.type !== expectedMediaType) {
         toast.error(
-          activeMediaMode === "video" ? "Choose a video model first" : "Choose an image model first",
+          activeMediaMode === "video"
+            ? "Choose a video model first"
+            : "Choose an image model first",
         );
         isSubmittingRef.current = false;
         return;
@@ -1812,13 +1827,12 @@ const ChatPage = () => {
         for (let i = messages.length - 1; i >= 0 && !lastImageUrl; i--) {
           const m: any = messages[i];
           const res = Array.isArray(m?.mediaResults) ? m.mediaResults : [];
-          const hit = [...res].reverse().find(
-            (r: any) => r?.type === "image" && r?.status === "done" && r?.url,
-          );
+          const hit = [...res]
+            .reverse()
+            .find((r: any) => r?.type === "image" && r?.status === "done" && r?.url);
           if (hit) {
             lastImageUrl = hit.url;
-            lastImagePrompt =
-              m?.mediaPlan?.originalPrompt || m?.mediaPlan?.summary || null;
+            lastImagePrompt = m?.mediaPlan?.originalPrompt || m?.mediaPlan?.summary || null;
           }
         }
         await runMediaTurn({
@@ -1869,7 +1883,13 @@ const ChatPage = () => {
     setMessages((prev) => [
       ...prev,
       userMsg,
-      { role: "assistant", content: "", clientId: `assistant-${localTurnId}`, mode: chatMode, modelLabel: selectedModel?.label ?? undefined },
+      {
+        role: "assistant",
+        content: "",
+        clientId: `assistant-${localTurnId}`,
+        mode: chatMode,
+        modelLabel: selectedModel?.label ?? undefined,
+      },
     ]);
     if (editingIndex !== null) {
       setEditingIndex(null);
@@ -1896,7 +1916,10 @@ const ChatPage = () => {
 
     if (readableLinks.length > 0) {
       try {
-        const response = await callServerEndpoint("read-url", { urls: readableLinks, maxChars: 7000 });
+        const response = await callServerEndpoint("read-url", {
+          urls: readableLinks,
+          maxChars: 7000,
+        });
         if (response.ok) {
           const payload = (await response.json()) as {
             pages?: Array<{ url: string; title?: string; text?: string; error?: string }>;
@@ -1955,8 +1978,7 @@ const ChatPage = () => {
     const _isNegated = SLIDES_NEGATION_RE.test(userInput);
     const _looksLikeSlidesAsk =
       _hasSlidesKeyword && (_hasCreateIntent || userInput.trim().length >= 12);
-    const shouldAutoStartSlides =
-      chatMode === "normal" && _looksLikeSlidesAsk && !_isNegated;
+    const shouldAutoStartSlides = chatMode === "normal" && _looksLikeSlidesAsk && !_isNegated;
     if (shouldAutoStartSlides) {
       setChatMode("slides");
     }
@@ -2019,7 +2041,6 @@ const ChatPage = () => {
       return;
     }
 
-
     // ── @docs agent: plan → research → review → clean writing ───────────
     if (selectedAgent?.id === "docs") {
       try {
@@ -2035,9 +2056,8 @@ const ChatPage = () => {
         // wording in place instead of regenerating the whole file.
         const lastDocMsg = [...messages].reverse().find((m) => m.docsArtifact);
         if (lastDocMsg?.docsArtifact) {
-          const { parseDocsEditIntent, replaceTextInHtml } = await import(
-            "@/lib/docs/textEditIntent"
-          );
+          const { parseDocsEditIntent, replaceTextInHtml } =
+            await import("@/lib/docs/textEditIntent");
           const intent = parseDocsEditIntent(userInput);
           const baseHtml = await getLastDocHtml();
           if (intent && baseHtml && (intent.kind === "replace" || intent.kind === "snippet")) {
@@ -2125,7 +2145,6 @@ const ChatPage = () => {
         isSubmittingRef.current = false;
       }
     }
-
 
     const conversationPromise = createOrUpdateConversation(
       userInput || (currentFiles.length > 0 ? `[${currentFiles.length} file(s)]` : "New chat"),
@@ -2232,7 +2251,6 @@ const ChatPage = () => {
     return () => clearTimeout(t);
   }, [chatMode]);
 
-
   const handleSend = (text?: string) => handleSendWithText(text);
 
   // Warm the modules the send path imports so the FIRST send is as fast as
@@ -2241,7 +2259,6 @@ const ChatPage = () => {
     prewarmSendPath();
     prewarmTranscript();
   }, []);
-
 
   // After signup, auto-send the prompt the user typed on the landing page.
   usePostSignupPrompt(handleSendWithText);
@@ -2280,8 +2297,6 @@ const ChatPage = () => {
     loadConversation,
     onNewChat: handleNewChat,
   });
-
-
 
   useEffect(() => {
     if (chatMode === "learning") return;
@@ -2463,7 +2478,6 @@ const ChatPage = () => {
     cancelEdit,
   } = useMessageEdit({ setInput, userId: chatUserId, conversationId });
 
-
   const hasConversation = messages.length > 0;
   const hasActiveTaskGlow =
     !hasConversation ||
@@ -2507,61 +2521,61 @@ const ChatPage = () => {
 
   const renderPlusContent = () => (
     <Suspense fallback={null}>
-    <PlusContent
-      plusView={plusView as any}
-      setPlusView={setPlusView as any}
-      setPlusMenuOpen={setPlusMenuOpen}
-      chatMode={chatMode}
-      cameraInputRef={cameraInputRef}
-      imageInputRef={imageInputRef}
-      fileInputRef={fileInputRef}
-      musicFileInputRef={musicFileInputRef}
-      studyAudioRef={studyAudioRef}
-      searchEnabled={searchEnabled}
-      handleSearchToggle={handleSearchToggle}
-      studyMusic={studyMusic}
-      setStudyMusic={setStudyMusic}
-      userTracks={userTracks}
-      uploadingMusic={uploadingMusic}
-      playUserTrack={playUserTrack}
-      deleteUserTrack={deleteUserTrack}
-      handleMusicUpload={handleMusicUpload}
-      timerInputMin={timerInputMin}
-      setTimerInputMin={setTimerInputMin}
-      setStudyTimers={setStudyTimers}
-      scrollToBottom={scrollToBottom}
-      megsyTier={megsyTier as any}
-      setMegsyTier={setMegsyTier as any}
-      userPlan={userPlan}
-      chatUserId={chatUserId}
-      mySkills={mySkills}
-      librarySkills={librarySkills}
-      toggleEnabled={toggleEnabled}
-      navigate={zoneNavigate}
-      integrationCategories={integrationCategories}
-      integrationsCategory={integrationsCategory}
-      setIntegrationsCategory={setIntegrationsCategory}
-      integrationsQuery={integrationsQuery}
-      filteredIntegrations={filteredIntegrations}
-      userIntegrations={userIntegrations as any}
-      connectingApp={connectingApp}
-      brokenLogos={brokenLogos}
-      setBrokenLogos={setBrokenLogos}
-      connectIntegration={connectIntegration}
-      onAddLink={() => setLinkDialogOpen(true)}
-      onModeChange={(m) => handleModeChange(m as any)}
-      onAgentSelect={(agentId) => {
-        const agent = getAgentById(agentId);
-        setChatMode("normal");
-        setSelectedAgent(agent || null);
-        setSelectedModel(null);
-      }}
-      onWebsiteStart={() => {
-        setChatMode("normal");
-        setSelectedAgent(getAgentById("dev") || null);
-        setSelectedModel(null);
-      }}
-    />
+      <PlusContent
+        plusView={plusView as any}
+        setPlusView={setPlusView as any}
+        setPlusMenuOpen={setPlusMenuOpen}
+        chatMode={chatMode}
+        cameraInputRef={cameraInputRef}
+        imageInputRef={imageInputRef}
+        fileInputRef={fileInputRef}
+        musicFileInputRef={musicFileInputRef}
+        studyAudioRef={studyAudioRef}
+        searchEnabled={searchEnabled}
+        handleSearchToggle={handleSearchToggle}
+        studyMusic={studyMusic}
+        setStudyMusic={setStudyMusic}
+        userTracks={userTracks}
+        uploadingMusic={uploadingMusic}
+        playUserTrack={playUserTrack}
+        deleteUserTrack={deleteUserTrack}
+        handleMusicUpload={handleMusicUpload}
+        timerInputMin={timerInputMin}
+        setTimerInputMin={setTimerInputMin}
+        setStudyTimers={setStudyTimers}
+        scrollToBottom={scrollToBottom}
+        megsyTier={megsyTier as any}
+        setMegsyTier={setMegsyTier as any}
+        userPlan={userPlan}
+        chatUserId={chatUserId}
+        mySkills={mySkills}
+        librarySkills={librarySkills}
+        toggleEnabled={toggleEnabled}
+        navigate={zoneNavigate}
+        integrationCategories={integrationCategories}
+        integrationsCategory={integrationsCategory}
+        setIntegrationsCategory={setIntegrationsCategory}
+        integrationsQuery={integrationsQuery}
+        filteredIntegrations={filteredIntegrations}
+        userIntegrations={userIntegrations as any}
+        connectingApp={connectingApp}
+        brokenLogos={brokenLogos}
+        setBrokenLogos={setBrokenLogos}
+        connectIntegration={connectIntegration}
+        onAddLink={() => setLinkDialogOpen(true)}
+        onModeChange={(m) => handleModeChange(m as any)}
+        onAgentSelect={(agentId) => {
+          const agent = getAgentById(agentId);
+          setChatMode("normal");
+          setSelectedAgent(agent || null);
+          setSelectedModel(null);
+        }}
+        onWebsiteStart={() => {
+          setChatMode("normal");
+          setSelectedAgent(getAgentById("dev") || null);
+          setSelectedModel(null);
+        }}
+      />
     </Suspense>
   );
 
@@ -2584,7 +2598,6 @@ const ChatPage = () => {
       const expandedH = Math.max(collapsedH, Math.min(expandedCap, vh - 40));
       const collapsedY = expandedH - collapsedH;
 
-
       return createPortal(
         <Suspense fallback={null}>
           <DraggablePlusSheet
@@ -2600,10 +2613,7 @@ const ChatPage = () => {
         </Suspense>,
         document.body,
       );
-
     }
-
-
 
     const menuWidth = plusView === "skills" ? Math.min(420, window.innerWidth - 24) : 300;
     const left = r ? Math.max(12, Math.min(window.innerWidth - menuWidth - 12, r.left + 8)) : 24;
@@ -2675,7 +2685,6 @@ const ChatPage = () => {
     };
   }, [setAttachedFiles, setInput]);
 
-
   const seoMeta = getSeoMeta(chatMode);
 
   const renderMobileServicePanel = () => (
@@ -2729,9 +2738,7 @@ const ChatPage = () => {
       onFeedback={handleLikeMessage}
       attachedFiles={attachedFiles}
     >
-
       <SEOHead title={seoMeta.title} description={seoMeta.description} path={seoMeta.path} />
-
 
       {/* Megsy Operator now renders as a tiny inline pill above the input — see below. */}
       <div
@@ -2817,7 +2824,6 @@ const ChatPage = () => {
         {/* The former left/right edge strip (z-80, touch-none) had no gesture
             handler attached and only swallowed taps near the screen edge. */}
 
-
         <motion.div
           data-chat-main="true"
           data-chat-empty={messages.length === 0 && !loadingMessages ? "true" : "false"}
@@ -2827,10 +2833,6 @@ const ChatPage = () => {
           aria-label="Chat"
           className="theme-fixed chat-surface-dark flex-1 flex flex-col min-w-0 relative overflow-hidden bg-background text-foreground max-md:z-[2]"
         >
-
-
-
-
           <ChatArtifactsCanvas conversationId={conversationId} />
 
           {/* Mobile-only header — Luma Neutral */}
@@ -3029,8 +3031,11 @@ const ChatPage = () => {
                         history.push({ role: m.role, content: m.content });
                         if (m.role === "assistant" && m.content.includes("```")) {
                           try {
-                            for (const f of extractProjectFiles(m.content)) fileMap.set(f.path, f.content);
-                          } catch {/* ignore */}
+                            for (const f of extractProjectFiles(m.content))
+                              fileMap.set(f.path, f.content);
+                          } catch {
+                            /* ignore */
+                          }
                         }
                       }
                       for (const runFiles of Object.values(coderProjectFiles)) {
@@ -3038,43 +3043,51 @@ const ChatPage = () => {
                       }
                       for (const [path, content] of fileMap) previousFiles.push({ path, content });
                       return coderRuns.map((run) => (
-                      <InlineCoderRun
-                        key={run.id}
-                        runId={run.id}
-                        prompt={run.prompt}
-                        previousFiles={previousFiles}
-                        history={history}
-                        attachments={run.attachments}
+                        <InlineCoderRun
+                          key={run.id}
+                          runId={run.id}
+                          prompt={run.prompt}
+                          previousFiles={previousFiles}
+                          history={history}
+                          attachments={run.attachments}
 
-                        onClose={() => setCoderRuns((prev) => prev.filter((r) => r.id !== run.id))}
-                        onFinish={(files, summary) => {
-                          if (savedCoderRunIdsRef.current.has(run.id)) return;
-                          savedCoderRunIdsRef.current.add(run.id);
-                          setCoderProjectFiles((prev) => ({ ...prev, [run.id]: files }));
-                          const projectText = files
-                            .map((file) => {
-                              const ext = (file.path.split(".").pop() || "txt").toLowerCase();
-                              return `\`\`\`${ext} ${file.path}\n${file.content}\n\`\`\``;
-                            })
-                            .join("\n\n");
-                          const content = [
-                            "Megsy Coder finished the build.",
-                            summary?.trim() ? summary.trim() : "",
-                            projectText,
-                          ]
-                            .filter(Boolean)
-                            .join("\n\n");
-                          void (async () => {
-                            const resolvedConversationId = await run.conversationPromise;
-                            if (!resolvedConversationId) return;
-                            const insertedId = await saveMessage(resolvedConversationId, "assistant", content).catch(() => undefined);
-                            if (insertedId) {
-                              ownInsertedIdsRef.current.add(insertedId);
-                              window.dispatchEvent(new CustomEvent("megsy:conversations-changed"));
-                            }
-                          })();
-                        }}
-                      />
+                          onClose={() =>
+                            setCoderRuns((prev) => prev.filter((r) => r.id !== run.id))
+                          }
+                          onFinish={(files, summary) => {
+                            if (savedCoderRunIdsRef.current.has(run.id)) return;
+                            savedCoderRunIdsRef.current.add(run.id);
+                            setCoderProjectFiles((prev) => ({ ...prev, [run.id]: files }));
+                            const projectText = files
+                              .map((file) => {
+                                const ext = (file.path.split(".").pop() || "txt").toLowerCase();
+                                return `\`\`\`${ext} ${file.path}\n${file.content}\n\`\`\``;
+                              })
+                              .join("\n\n");
+                            const content = [
+                              "Megsy Coder finished the build.",
+                              summary?.trim() ? summary.trim() : "",
+                              projectText,
+                            ]
+                              .filter(Boolean)
+                              .join("\n\n");
+                            void (async () => {
+                              const resolvedConversationId = await run.conversationPromise;
+                              if (!resolvedConversationId) return;
+                              const insertedId = await saveMessage(
+                                resolvedConversationId,
+                                "assistant",
+                                content,
+                              ).catch(() => undefined);
+                              if (insertedId) {
+                                ownInsertedIdsRef.current.add(insertedId);
+                                window.dispatchEvent(
+                                  new CustomEvent("megsy:conversations-changed"),
+                                );
+                              }
+                            })();
+                          }}
+                        />
                       ));
                     })()}
                   </div>
@@ -3082,7 +3095,6 @@ const ChatPage = () => {
               ) : null
             }
           />
-
 
           {/* Floating bottom composer dock with attachments + mode bar + chips */}
           <ChatComposerSection
@@ -3197,7 +3209,8 @@ const ChatPage = () => {
                 <DialogHeader>
                   <DialogTitle>Add links</DialogTitle>
                   <DialogDescription>
-                    Paste one or more links. Megsy will read them and attach their content to this turn.
+                    Paste one or more links. Megsy will read them and attach their content to this
+                    turn.
                   </DialogDescription>
                 </DialogHeader>
                 <Textarea
