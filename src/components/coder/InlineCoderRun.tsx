@@ -685,7 +685,9 @@ export default function InlineCoderRun({
       {prose && <ChatMessage role="assistant" content={prose} />}
 
       {status === "error" && (
-        <p className="text-[13px] leading-relaxed text-destructive">{error}</p>
+        <div className="my-2 max-w-[640px] rounded-2xl border border-destructive/30 bg-destructive/5 p-3 text-[12.5px] leading-relaxed text-destructive">
+          {error}
+        </div>
       )}
 
       {status === "running" && (
@@ -695,7 +697,7 @@ export default function InlineCoderRun({
             finished.current = true;
             abortCoderRun(runId);
             setStatus("error");
-            setError("Build stopped.");
+            setError(ar ? "تم إيقاف البناء." : "Build stopped.");
             onClose();
           }}
           className="mt-1 text-[12px] text-muted-foreground underline-offset-2 hover:underline"
@@ -705,25 +707,27 @@ export default function InlineCoderRun({
       )}
 
       {status === "done" && projectFiles.length > 0 && (
-        <div className="mt-3 space-y-3">
+        <div className="mt-3 max-w-[640px] space-y-2.5">
           {/* Preview card */}
-          <div className="overflow-hidden rounded-2xl border border-border/50 bg-background/40">
-            <div className="flex items-center gap-2 border-b border-border/40 px-3 py-2">
-              <Eye className="h-3.5 w-3.5 text-muted-foreground" />
+          <div className="overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br from-card/80 to-card/40 backdrop-blur">
+            <div className="flex items-center gap-2 border-b border-border/50 px-3 py-2.5">
+              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+                <Eye className="h-3.5 w-3.5" />
+              </span>
               <span className="flex-1 truncate text-[12.5px] font-medium text-foreground">
                 {ar ? "معاينة الموقع" : "Site preview"}
               </span>
               <Button
                 size="sm"
                 variant="ghost"
-                className="h-7 text-xs"
+                className="h-7 gap-1 rounded-xl text-xs"
                 disabled={publishing}
                 onClick={handlePreview}
               >
                 {publishing ? (
-                  <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 ) : (
-                  <ExternalLink className="mr-1 h-3.5 w-3.5" />
+                  <ExternalLink className="h-3.5 w-3.5" />
                 )}
                 {publishing
                   ? ar
@@ -743,10 +747,10 @@ export default function InlineCoderRun({
                 title={ar ? "معاينة الموقع" : "Site preview"}
                 srcDoc={previewHtml}
                 sandbox="allow-scripts allow-forms allow-popups"
-                className="h-[360px] w-full bg-white"
+                className="h-[360px] w-full border-0 bg-background"
               />
             ) : (
-              <div className="px-3 py-6 text-center text-[12.5px] text-muted-foreground">
+              <div className="px-3 py-8 text-center text-[12.5px] text-muted-foreground">
                 {ar
                   ? "هذا المشروع لا يمكن معاينته مباشرة."
                   : "This project can’t be previewed inline."}
@@ -755,9 +759,11 @@ export default function InlineCoderRun({
           </div>
 
           {/* Files card */}
-          <div className="overflow-hidden rounded-2xl border border-border/50 bg-background/40">
-            <div className="flex items-center gap-2 border-b border-border/40 px-3 py-2">
-              <FileCode className="h-3.5 w-3.5 text-muted-foreground" />
+          <div className="overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br from-card/80 to-card/40 backdrop-blur">
+            <div className="flex items-center gap-2 border-b border-border/50 px-3 py-2.5">
+              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+                <FileCode className="h-3.5 w-3.5" />
+              </span>
               <span className="flex-1 truncate text-[12.5px] font-medium text-foreground">
                 {ar
                   ? `ملفات الموقع · ${projectFiles.length}`
@@ -766,18 +772,18 @@ export default function InlineCoderRun({
               <Button
                 size="sm"
                 variant="secondary"
-                className="h-7 text-xs"
+                className="h-7 gap-1 rounded-xl text-xs"
                 onClick={() => downloadProjectZip(projectFiles)}
               >
-                <Download className="mr-1 h-3.5 w-3.5" />
+                <Download className="h-3.5 w-3.5" />
                 ZIP
               </Button>
             </div>
-            <ul className="max-h-56 overflow-y-auto px-2 py-2">
+            <ul className="max-h-56 divide-y divide-border/40 overflow-y-auto">
               {fileList.map((path) => (
                 <li
                   key={path}
-                  className="truncate px-2 py-1 text-[12px] text-muted-foreground"
+                  className="truncate px-3 py-1.5 font-mono text-[11.5px] text-muted-foreground"
                   dir="ltr"
                 >
                   {path}
