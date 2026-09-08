@@ -66,7 +66,12 @@ function extractFiles(text: string) {
   let m: RegExpExecArray | null;
   while ((m = fence.exec(text)) !== null) {
     if (/^patch|^diff/.test(m[0].slice(3))) continue;
-    out.push({ path: m[1].trim(), content: m[2] });
+    let path = m[1].trim();
+    // JSX inside a .ts/.js file cannot be parsed — fix the extension.
+    if (/\.(ts|m?js)$/i.test(path) && /<[A-Za-z][A-Za-z0-9.]*[\s/>]/.test(m[2])) {
+      path = path.replace(/\.ts$/i, ".tsx").replace(/\.m?js$/i, ".jsx");
+    }
+    out.push({ path, content: m[2] });
   }
   return out;
 }
