@@ -406,7 +406,10 @@ export default function InlineCoderRun({ runId, prompt, onClose, onFinish, previ
     const unsub = subscribeCoderRun(runId, prompt, (ev: KimiEvent) => {
       lastEventRef.current = Date.now();
       sawEventRef.current = true;
-      if (ev.type === "todo") setTodos(ev.todos);
+      if (ev.type === "todo") {
+        setTodos(ev.todos);
+        for (const t of ev.todos) pushStep(t.title);
+      }
 
       else if (ev.type === "text") {
         const next = `${notesRef.current}${notesRef.current && ev.text ? "\n\n" : ""}${ev.text || ""}`;
@@ -418,13 +421,18 @@ export default function InlineCoderRun({ runId, prompt, onClose, onFinish, previ
       else if (ev.type === "file") {
         setFiles((prev) => {
           const next = new Map(prev);
+          if (!prev.has(ev.path)) pushStep(`${ar ? "إنشاء" : "Creating"} ${ev.path}`);
+          else if (prev.get(ev.path) !== ev.content) pushStep(`${ar ? "تعديل" : "Editing"} ${ev.path}`);
           next.set(ev.path, ev.content);
           filesRef.current = next;
           return next;
         });
         setSelectedFile((cur) => cur ?? ev.path);
-      } else if (ev.type === "bash")
+      } else if (ev.type === "bash") {
+        pushStep(`$ ${ev.command}`);
         setBash((prev) => [...prev, { command: ev.command, output: ev.output, ok: ev.ok }]);
+      }
+
       else if (ev.type === "integration") {
         setIntegrations((prev) => {
           if (prev.find((p) => p.kind === ev.kind)) return prev;
