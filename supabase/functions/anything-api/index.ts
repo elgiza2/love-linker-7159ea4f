@@ -417,19 +417,20 @@ async function deapiVideoSubmit(opts: {
   form.append("steps", String(opts.steps));
 
   let res: Response;
+  let text: string;
   if (opts.image) {
     const r = await fetch(opts.image);
     if (!r.ok) throw new Error(`failed to download the reference image (${r.status})`);
     const ct = r.headers.get("content-type") ?? "image/png";
     const ext = ct.includes("jpeg") ? "jpg" : ct.includes("webp") ? "webp" : "png";
     form.append("image", await r.blob(), `frame.${ext}`);
-    res = await fetch("https://api.deapi.ai/api/v2/videos/generations", {
+    ({ res, text } = await fetchWithRetry("https://api.deapi.ai/api/v2/videos/generations", {
       method: "POST",
       headers: { Authorization: `Bearer ${opts.key}`, Accept: "application/json" },
       body: form,
-    });
+    }));
   } else {
-    const payload: Record<string, unknown> = {
+    const body: Record<string, unknown> = {
       model: opts.model,
       prompt: opts.prompt,
       width,
@@ -439,18 +440,22 @@ async function deapiVideoSubmit(opts: {
       fps: opts.fps,
       steps: opts.steps,
     };
-    res = await fetch("https://api.deapi.ai/api/v2/videos/generations", {
+    ({ res, text } = await fetchWithRetry("https://api.deapi.ai/api/v2/videos/generations", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${opts.key}`,
         Accept: "application/json",
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(payload),
-    });
+      body: JSON.stringify(body),
+    }));
   }
-  const text = await res.text();
-  if (!res.ok) throw new Error(`deapi ${res.status}: ${text.slice(0, 300)}`);
+  if (!res.ok) {
+    if (res.status >= 500) {
+      throw new Error("مزود الفيديو مشغول حاليًا. جرّب تاني بعد لحظات.");
+    }
+    throw new Error(`deapi ${res.status}: ${text.slice(0, 300)}`);
+  }
   const payload = JSON.parse(text);
   const id = payload?.data?.request_id ?? payload?.request_id ?? payload?.data?.id ?? payload?.id;
   if (!id) throw new Error(`deapi: no video request id (${text.slice(0, 200)})`);
