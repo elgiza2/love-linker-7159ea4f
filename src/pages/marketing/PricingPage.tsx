@@ -1,6 +1,13 @@
 /** @doc Plans, yearly toggle, MC top-up packs and the official pricing FAQ — cinematic redesign. */
 import { Suspense, lazy, useState, useEffect, useRef } from "react";
-import { m as motion, AnimatePresence, useInView, useMotionValue, useTransform, animate } from "framer-motion";
+import {
+  m as motion,
+  AnimatePresence,
+  useInView,
+  useMotionValue,
+  useTransform,
+  animate,
+} from "framer-motion";
 import { Check, Loader2, ChevronDown, Menu, X, Plus, Minus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -20,7 +27,6 @@ import { useSidebarCollapsed } from "@/hooks/useSidebarCollapsed";
 import type { Gateway } from "@/components/billing/PaymentGatewaySheet";
 import PlanCard from "@/pages/billing/referrals/PlanCard";
 
-
 import {
   PLANS as RAW_PLANS,
   FAQS as RAW_FAQS,
@@ -32,7 +38,6 @@ import {
 } from "@/data/pricingData";
 import { markCheckoutOpened, hasAbandonedCheckout, INTRO_PRICE } from "@/lib/pricingOffers";
 import { dodoProductId } from "@/lib/dodoCatalog";
-
 
 import { brandText, getZoneBrand } from "@/lib/zoneBrand";
 import { isEgMode } from "@/lib/egMode";
@@ -77,7 +82,9 @@ function StaggeredFade({
     /[\u0590-\u05FF\u0600-\u06FF\u0700-\u074F\u0750-\u077F\u08A0-\u08FF\u0900-\u097F\u0980-\u09FF\u0A00-\u0A7F\u0A80-\u0AFF\u0B00-\u0B7F\u0B80-\u0BFF\u0C00-\u0C7F\u0C80-\u0CFF\u0D00-\u0D7F\u0E00-\u0E7F\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uAC00-\uD7AF]/.test(
       translated,
     );
-  const isRTL = /[\u0590-\u05FF\u0600-\u06FF\u0700-\u074F\u0750-\u077F\u08A0-\u08FF]/.test(translated);
+  const isRTL = /[\u0590-\u05FF\u0600-\u06FF\u0700-\u074F\u0750-\u077F\u08A0-\u08FF]/.test(
+    translated,
+  );
 
   if (isComplexScript) {
     // Split by whitespace so words stay intact; each word is one inline-block.
@@ -138,9 +145,7 @@ function CountUp({
 }) {
   const ref = useRef<HTMLSpanElement>(null);
   const mv = useMotionValue(value);
-  const [display, setDisplay] = useState<string>(() =>
-    Math.round(value).toLocaleString("en-US")
-  );
+  const [display, setDisplay] = useState<string>(() => Math.round(value).toLocaleString("en-US"));
   const prev = useRef(value);
   const mounted = useRef(false);
 
@@ -173,7 +178,6 @@ function CountUp({
     </span>
   );
 }
-
 
 /* ============================== Pricing Page ============================== */
 const PricingPage = () => {
@@ -326,8 +330,7 @@ const PricingPage = () => {
 
       // Map user-facing option → backend provider.
       // global → Dodo Payments, local/wallets → Kashier.
-      const provider =
-        gateway === "global" ? "dodo" : "kashier";
+      const provider = gateway === "global" ? "dodo" : "kashier";
       const method = gateway === "wallets" ? "wallet" : "card";
 
       // Kashier: server-side catalog decides amount/credits/plan. We only
@@ -337,24 +340,21 @@ const PricingPage = () => {
         // business purchases stay unavailable until matching catalog items
         // exist server-side, so checkout can never open with an invalid SKU.
         const skuMap: Record<string, string> = {
-          "pro:monthly":       "plan_pro_m_first",
-          "elite:monthly":     "plan_elite_m",
+          "pro:monthly": "plan_pro_m_first",
+          "elite:monthly": "plan_elite_m",
         };
         const sku = skuMap[`${tier}:${interval}`];
         if (!sku) {
           throw new Error("This plan isn't available for local payment yet.");
         }
 
-        const { data: kData, error: kErr } = await supabase.functions.invoke(
-          "kashier-checkout",
-          {
-            body: {
-              sku,
-              method,
-              display: isEgMode() || isArabBilling() ? "ar" : "en",
-            },
+        const { data: kData, error: kErr } = await supabase.functions.invoke("kashier-checkout", {
+          body: {
+            sku,
+            method,
+            display: isEgMode() || isArabBilling() ? "ar" : "en",
           },
-        );
+        });
         if (kErr || !kData?.checkout_url) {
           throw new Error(kErr?.message || kData?.error || "Checkout failed");
         }
@@ -389,9 +389,7 @@ const PricingPage = () => {
       if (data?.url) {
         markCheckoutOpened(interval);
         window.location.href = data.url;
-      }
-      else throw new Error(data?.error || "Checkout failed");
-
+      } else throw new Error(data?.error || "Checkout failed");
     } catch (e: any) {
       toast.error(e?.message || "Failed to open checkout. Please try again.");
     } finally {
@@ -400,7 +398,6 @@ const PricingPage = () => {
       setGatewaySheet(null);
     }
   };
-
 
   const scrollTo = (id: string) => {
     if (id.startsWith("#")) {
@@ -436,7 +433,9 @@ const PricingPage = () => {
             isYearly={isYearly}
             onToggleYearly={setIsYearly}
             loadingTier={loadingTier}
-            onSubscribe={(tier) => handleSubscribe(tier, { interval: isYearly ? "yearly" : "monthly" })}
+            onSubscribe={(tier) =>
+              handleSubscribe(tier, { interval: isYearly ? "yearly" : "monthly" })
+            }
             onMenuClick={() => setMobileOpen(true)}
           />
         </MobilePushShell>
@@ -661,490 +660,504 @@ const PricingPage = () => {
         }
       `}</style>
 
-      {/* ============================ HERO ============================ */}
-      <section className="relative w-full overflow-hidden min-h-[68vh] md:min-h-[52vh] flex flex-col">
-        {/* Warm gradient poster shown while the hero video streams in */}
-        <div
-          aria-hidden
-          className="absolute inset-0"
-          style={{
-            background:
-              "radial-gradient(ellipse at 50% 30%, rgba(180,40,50,0.55) 0%, rgba(60,10,14,0.7) 45%, #010101 100%)",
-          }}
-        />
-        {/* Background video */}
-        <video
-          autoPlay
-          muted
-          loop
-          playsInline
-          preload="none"
-          onLoadedData={(e) => {
-            (e.currentTarget as HTMLVideoElement).style.opacity = "1";
-          }}
-          style={{ opacity: 0, transition: "opacity 900ms cubic-bezier(0.22,1,0.36,1)" }}
-          className="absolute inset-0 w-full h-full object-cover object-center"
-          src={HERO_VIDEO}
-        />
-        <div className="absolute inset-0 hero-vignette pointer-events-none" />
+              {/* ============================ HERO ============================ */}
+              <section className="relative w-full overflow-hidden min-h-[68vh] md:min-h-[52vh] flex flex-col">
+                {/* Warm gradient poster shown while the hero video streams in */}
+                <div
+                  aria-hidden
+                  className="absolute inset-0"
+                  style={{
+                    background:
+                      "radial-gradient(ellipse at 50% 30%, rgba(180,40,50,0.55) 0%, rgba(60,10,14,0.7) 45%, #010101 100%)",
+                  }}
+                />
+                {/* Background video */}
+                <video
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                  preload="none"
+                  onLoadedData={(e) => {
+                    (e.currentTarget as HTMLVideoElement).style.opacity = "1";
+                  }}
+                  style={{ opacity: 0, transition: "opacity 900ms cubic-bezier(0.22,1,0.36,1)" }}
+                  className="absolute inset-0 w-full h-full object-cover object-center"
+                  src={HERO_VIDEO}
+                />
+                <div className="absolute inset-0 hero-vignette pointer-events-none" />
 
+                {/* Nav */}
+                <nav className="relative z-20 flex items-center justify-between md:justify-center md:gap-12 px-5 sm:px-8 pt-10 sm:pt-8"></nav>
 
-        {/* Nav */}
-        <nav className="relative z-20 flex items-center justify-between md:justify-center md:gap-12 px-5 sm:px-8 pt-10 sm:pt-8">
-        </nav>
-
-
-        {/* Hero content */}
-        <div className="relative z-10 flex flex-1 flex-col items-center justify-center text-center px-5 sm:px-8 pt-4 sm:pt-6 pb-6 sm:pb-8">
-          <h1
-            className="font-garamond font-normal text-foreground tracking-normal mb-4 sm:mb-5 text-4xl sm:text-5xl md:text-6xl lg:text-7xl"
-            style={{ lineHeight: 1.08 }}
-          >
-            <StaggeredFade text="CHOOSE YOUR" className="block" />
-            <StaggeredFade text="CREATIVE EDGE" className="block" startDelay={0.4} />
-          </h1>
-
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 1.6 }}
-            className="text-foreground/70 font-light leading-relaxed max-w-xs sm:max-w-md text-sm sm:text-base md:text-lg"
-          >
-            {`Simple plans for the entire ${BRAND} ecosystem, built for creators, teams and enterprises.`}
-          </motion.p>
-
-
-
-
-
-
-          {/* Promo */}
-          {promo.active && (
-            <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 2.2 }}
-              className="mt-6 sm:mt-8 inline-flex flex-col md:flex-row items-center md:items-stretch gap-5 md:gap-6 px-6 sm:px-7 py-4 rounded-2xl mobile-menu-glass"
-              >
-              <div className="flex flex-col items-center md:items-start text-center md:text-start gap-1.5">
-                <span
-                  className="inline-flex items-center rounded-full px-2.5 py-1 text-[10px] uppercase font-medium text-foreground bg-foreground/10 border border-foreground/10"
-                  style={{ letterSpacing: "0.18em" }}
-                >
-                  {"Limited Launch Offer"}
-                </span>
-                <p className="text-[13px] text-foreground/90 leading-relaxed max-w-[16rem] sm:max-w-[18rem]">
-                  {`Pro first month $${INTRO_PRICE} — then $20/month`}
-                </p>
-
-              </div>
-              <div
-                className="hidden md:block w-px self-stretch"
-                style={{ background: "var(--overlay-white-12)" }}
-              />
-              <div
-                className="h-px w-full md:hidden"
-                style={{ background: "var(--overlay-white-12)" }}
-              />
-              <div className="flex gap-4 sm:gap-5 font-garamond tabular-nums" dir="ltr">
-                {[
-                  { v: pad2(promo.days), l: "Days" },
-                  { v: pad2(promo.hours), l: "Hrs" },
-                  { v: pad2(promo.minutes), l: "Min" },
-                  { v: pad2(promo.seconds), l: "Sec" },
-                ].map((t) => (
-                  <div key={t.l} className="flex flex-col items-center min-w-[2.5rem]">
-                    <span className="text-[26px] sm:text-2xl text-foreground leading-none">{t.v}</span>
-                    <span
-                      className="text-[10px] uppercase mt-1.5 text-foreground/80 whitespace-nowrap"
-                      style={{ letterSpacing: "0.22em" }}
-                    >
-                      {t.l}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-          )}
-        </div>
-      </section>
-
-      {/* ============================ PLANS ============================ */}
-      <section
-        id="plans-grid"
-        className="section-bg relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-14 sm:py-20 scroll-mt-8"
-      >
-        <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.7 }}
-          className="text-center mb-10"
-        >
-          <div className="mx-auto mb-8 flex h-[170px] w-full max-w-[520px] items-center justify-center sm:h-[200px]">
-            <PlanCard
-              plan="pro"
-              className="z-10 h-[120px] w-[176px] shrink-0 sm:h-[142px] sm:w-[208px]"
-            />
-          </div>
-
-          <h2
-            className="font-garamond text-foreground"
-            style={{ fontSize: "clamp(2rem, 5vw, 3.5rem)", lineHeight: 1.1 }}
-          >
-            Megsy Pro
-          </h2>
-          <p
-            className="mt-3 text-foreground/85 text-xs sm:text-sm uppercase font-light"
-            style={{ letterSpacing: "0.3em" }}
-          >
-            Unlock your creative power — start today
-          </p>
-
-          {/* Billing toggle */}
-          <div className="mt-6 inline-flex items-center gap-4">
-            <span
-              className={`text-xs uppercase transition-colors ${isYearly ? "text-foreground/80" : "text-foreground"}`}
-              style={{ letterSpacing: "0.2em" }}
-            >
-              Monthly
-            </span>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={isYearly}
-              aria-label={isYearly ? "Switch to monthly billing" : "Switch to yearly billing"}
-              onClick={() => setIsYearly((v) => !v)}
-              className="relative w-14 h-7 rounded-full border border-foreground/40 backdrop-blur-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
-              style={{
-                background: "var(--overlay-white-18)",
-                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.35), 0 4px 16px var(--overlay-white-08)",
-              }}
-            >
-              <span
-                className="absolute top-1/2 left-1 w-5 h-5 rounded-full transition-transform duration-300"
-                style={{
-                  background: "rgba(255,255,255,0.95)",
-                  boxShadow: "0 2px 8px rgba(255,255,255,0.4), inset 0 1px 0 var(--overlay-white-90)",
-                  transform: `translateY(-50%) translateX(${isYearly ? "26px" : "0px"})`,
-                }}
-              />
-            </button>
-            <span
-              className={`text-xs uppercase flex items-center gap-2 transition-colors ${isYearly ? "text-foreground" : "text-foreground/80"}`}
-              style={{ letterSpacing: "0.2em" }}
-            >
-              Yearly
-              <span
-                className="text-[9px] px-2 py-0.5 rounded-full border border-foreground/25 text-foreground/85 font-normal"
-                style={{ letterSpacing: "0.15em" }}
-              >
-                4 months free
-              </span>
-            </span>
-          </div>
-        </motion.div>
-
-
-        <div className="mx-auto grid max-w-xl grid-cols-1 gap-6 items-stretch">
-          {PLANS.filter((p) => p.tier === "pro").map((p, i) => {
-            // Single source of truth: intro price monthly, 2-months-free yearly.
-            const {
-              price,
-              strike: strikePrice,
-              isIntro: isProFirstMonth,
-              discountLabel,
-            } = getDisplayPrice(p, isYearly);
-            const rawPrice = p.monthlyPrice;
-            const credits = isYearly ? p.yearlyCredits : p.monthlyCredits;
-            const isElite = p.tier === "elite";
-            const isBusiness = p.tier === "business";
-
-            const order: PlanTier[] = ["starter", "pro", "elite", "business"];
-            const cur = (currentPlan ?? "starter").toLowerCase() as PlanTier;
-            const curIdx = order.indexOf(cur);
-            const thisIdx = order.indexOf(p.tier);
-            const isCurrent = curIdx === thisIdx;
-            const isLower = thisIdx < curIdx;
-            const ctaLabel = isCurrent
-              ? "Current plan"
-              : isLower
-                ? `Downgrade to ${p.name}`
-                : `Get ${p.name}`;
-
-            return (
-              <motion.div
-                key={p.tier}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.6, delay: i * 0.1 }}
-                className={`pricing-card-glass relative rounded-3xl flex flex-col ${isElite ? "pricing-card-elite md:scale-[1.03] z-10" : ""}`}
-              >
-
-                <div className="relative z-10 p-7 sm:p-8 flex flex-col flex-1">
-                  <h3
-                    className="font-garamond text-3xl text-foreground mb-4"
-                    style={{ letterSpacing: "0.02em" }}
+                {/* Hero content */}
+                <div className="relative z-10 flex flex-1 flex-col items-center justify-center text-center px-5 sm:px-8 pt-4 sm:pt-6 pb-6 sm:pb-8">
+                  <h1
+                    className="font-garamond font-normal text-foreground tracking-normal mb-4 sm:mb-5 text-4xl sm:text-5xl md:text-6xl lg:text-7xl"
+                    style={{ lineHeight: 1.08 }}
                   >
-                    {p.name}
-                  </h3>
+                    <StaggeredFade text="CHOOSE YOUR" className="block" />
+                    <StaggeredFade text="CREATIVE EDGE" className="block" startDelay={0.4} />
+                  </h1>
 
-                  <div className="flex items-baseline gap-1.5">
-                    <span className="font-garamond text-2xl text-foreground">$</span>
-                    <CountUp
-                      value={price}
-                      className="font-garamond text-6xl leading-none text-foreground tabular-nums"
+                  <motion.p
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.8, delay: 1.6 }}
+                    className="text-foreground/70 font-light leading-relaxed max-w-xs sm:max-w-md text-sm sm:text-base md:text-lg"
+                  >
+                    {`Simple plans for the entire ${BRAND} ecosystem, built for creators, teams and enterprises.`}
+                  </motion.p>
+
+                  {/* Promo */}
+                  {promo.active && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 16 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.8, delay: 2.2 }}
+                      className="mt-6 sm:mt-8 inline-flex flex-col md:flex-row items-center md:items-stretch gap-5 md:gap-6 px-6 sm:px-7 py-4 rounded-2xl mobile-menu-glass"
+                    >
+                      <div className="flex flex-col items-center md:items-start text-center md:text-start gap-1.5">
+                        <span
+                          className="inline-flex items-center rounded-full px-2.5 py-1 text-[10px] uppercase font-medium text-foreground bg-foreground/10 border border-foreground/10"
+                          style={{ letterSpacing: "0.18em" }}
+                        >
+                          {"Limited Launch Offer"}
+                        </span>
+                        <p className="text-[13px] text-foreground/90 leading-relaxed max-w-[16rem] sm:max-w-[18rem]">
+                          {`Pro first month $${INTRO_PRICE} — then $20/month`}
+                        </p>
+                      </div>
+                      <div
+                        className="hidden md:block w-px self-stretch"
+                        style={{ background: "var(--overlay-white-12)" }}
+                      />
+                      <div
+                        className="h-px w-full md:hidden"
+                        style={{ background: "var(--overlay-white-12)" }}
+                      />
+                      <div className="flex gap-4 sm:gap-5 font-garamond tabular-nums" dir="ltr">
+                        {[
+                          { v: pad2(promo.days), l: "Days" },
+                          { v: pad2(promo.hours), l: "Hrs" },
+                          { v: pad2(promo.minutes), l: "Min" },
+                          { v: pad2(promo.seconds), l: "Sec" },
+                        ].map((t) => (
+                          <div key={t.l} className="flex flex-col items-center min-w-[2.5rem]">
+                            <span className="text-[26px] sm:text-2xl text-foreground leading-none">
+                              {t.v}
+                            </span>
+                            <span
+                              className="text-[10px] uppercase mt-1.5 text-foreground/80 whitespace-nowrap"
+                              style={{ letterSpacing: "0.22em" }}
+                            >
+                              {t.l}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                </div>
+              </section>
+
+              {/* ============================ PLANS ============================ */}
+              <section
+                id="plans-grid"
+                className="section-bg relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-14 sm:py-20 scroll-mt-8"
+              >
+                <motion.div
+                  initial={{ opacity: 0, y: 24 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.7 }}
+                  className="text-center mb-10"
+                >
+                  <div className="mx-auto mb-8 flex h-[170px] w-full max-w-[520px] items-center justify-center sm:h-[200px]">
+                    <PlanCard
+                      plan="pro"
+                      className="z-10 h-[120px] w-[176px] shrink-0 sm:h-[142px] sm:w-[208px]"
                     />
-                    <span className="text-foreground text-xs ml-1 uppercase" style={{ letterSpacing: "0.2em" }}>
-                      /{isProFirstMonth ? "1st mo" : isYearly ? "year" : "month"}
-                    </span>
                   </div>
 
-                  <div className="flex items-center gap-2 mt-3">
-                    <span className="text-xs text-foreground/85 line-through tabular-nums">
-                      $<CountUp value={strikePrice} />
-                    </span>
+                  <h2
+                    className="font-garamond text-foreground"
+                    style={{ fontSize: "clamp(2rem, 5vw, 3.5rem)", lineHeight: 1.1 }}
+                  >
+                    Megsy Pro
+                  </h2>
+                  <p
+                    className="mt-3 text-foreground/85 text-xs sm:text-sm uppercase font-light"
+                    style={{ letterSpacing: "0.3em" }}
+                  >
+                    Unlock your creative power — start today
+                  </p>
+
+                  {/* Billing toggle */}
+                  <div className="mt-6 inline-flex items-center gap-4">
                     <span
-                      className="text-[10px] uppercase px-2 py-0.5 rounded-full border border-foreground/40 text-foreground font-light"
-                      style={{ letterSpacing: "0.18em" }}
-                    >
-                      {discountLabel}
-                    </span>
-                  </div>
-
-                  {isProFirstMonth && (
-                    <p className="text-[10px] uppercase text-foreground/70 mt-2 font-light" style={{ letterSpacing: "0.18em" }}>
-                      Then ${rawPrice}/month
-                    </p>
-                  )}
-
-                  {/* Yearly maths spelled out so the offer never looks contradictory:
-                      12 months billed at the price of 8. */}
-                  {isYearly && rawPrice > 0 && (
-                    <p className="text-[10px] uppercase text-foreground/70 mt-2 font-light" style={{ letterSpacing: "0.18em" }}>
-                      ≈ ${Math.round(p.yearlyPrice / 12)}/month · pay {12 - YEARLY_FREE_MONTHS} months, get 12
-                    </p>
-                  )}
-
-
-
-
-
-                  {credits && (
-                    <p
-                      className="text-foreground text-[11px] mt-5 uppercase font-light"
-                      style={{ letterSpacing: "0.22em" }}
-                    >
-                      {credits}
-                    </p>
-                  )}
-
-                  <div
-                    className="h-px w-full my-7"
-                    style={{
-                      background:
-                        "linear-gradient(90deg, transparent, var(--overlay-white-18), transparent)",
-                    }}
-                  />
-
-                  {p.tier !== "starter" && (
-                    <button
-                      type="button"
-                      onClick={() => handleSubscribe(p.tier)}
-                      disabled={loadingTier !== null || isCurrent}
-                      className={`liquid-glass w-full py-3.5 rounded-full text-xs uppercase font-normal text-foreground disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2 ${isElite ? "bg-foreground/[0.04]" : ""}`}
+                      className={`text-xs uppercase transition-colors ${isYearly ? "text-foreground/80" : "text-foreground"}`}
                       style={{ letterSpacing: "0.2em" }}
                     >
-                      {loadingTier === p.tier ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        ctaLabel
-                      )}
-                    </button>
-                  )}
-
-                  {(() => {
-                    const list =
-                      (isYearly ? p.yearlyFeatures : p.monthlyFeatures) ?? p.features;
-                    const periodKey = isYearly ? "y" : "m";
-                    return (
-                      <motion.ul
-                        key={`${p.tier}-${periodKey}`}
-                        className="mt-7 space-y-3 flex-1"
-                        initial="hidden"
-                        animate="visible"
-                        variants={{
-                          hidden: {},
-                          visible: { transition: { staggerChildren: 0.05, delayChildren: 0.08 } },
+                      Monthly
+                    </span>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={isYearly}
+                      aria-label={
+                        isYearly ? "Switch to monthly billing" : "Switch to yearly billing"
+                      }
+                      onClick={() => setIsYearly((v) => !v)}
+                      className="relative w-14 h-7 rounded-full border border-foreground/40 backdrop-blur-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+                      style={{
+                        background: "var(--overlay-white-18)",
+                        boxShadow:
+                          "inset 0 1px 0 rgba(255,255,255,0.35), 0 4px 16px var(--overlay-white-08)",
+                      }}
+                    >
+                      <span
+                        className="absolute top-1/2 left-1 w-5 h-5 rounded-full transition-transform duration-300"
+                        style={{
+                          background: "rgba(255,255,255,0.95)",
+                          boxShadow:
+                            "0 2px 8px rgba(255,255,255,0.4), inset 0 1px 0 var(--overlay-white-90)",
+                          transform: `translateY(-50%) translateX(${isYearly ? "26px" : "0px"})`,
                         }}
+                      />
+                    </button>
+                    <span
+                      className={`text-xs uppercase flex items-center gap-2 transition-colors ${isYearly ? "text-foreground" : "text-foreground/80"}`}
+                      style={{ letterSpacing: "0.2em" }}
+                    >
+                      Yearly
+                      <span
+                        className="text-[9px] px-2 py-0.5 rounded-full border border-foreground/25 text-foreground/85 font-normal"
+                        style={{ letterSpacing: "0.15em" }}
                       >
-                        {list.map((f, idx) => {
-                          const isUnlimited = /unlimited/i.test(f);
-                          const isSave = /^save\s|\bbonus\b|\blocked-?in\b|2 months free/i.test(f);
-                          return (
-                            <motion.li
-                              key={`${f}-${idx}`}
-                              className="flex items-start gap-3 text-[13px] leading-snug"
-                              style={{
-                                color: "#ffffff",
-                                fontWeight: isUnlimited || isSave ? 500 : 400,
-                              }}
-                              variants={{
-                                hidden: { opacity: 0, x: -18, filter: "blur(6px)" },
-                                visible: {
-                                  opacity: 1,
-                                  x: 0,
-                                  filter: "blur(0px)",
-                                  transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] },
-                                },
-                              }}
+                        4 months free
+                      </span>
+                    </span>
+                  </div>
+                </motion.div>
+
+                <div className="mx-auto grid max-w-xl grid-cols-1 gap-6 items-stretch">
+                  {PLANS.filter((p) => p.tier === "pro").map((p, i) => {
+                    // Single source of truth: intro price monthly, 2-months-free yearly.
+                    const {
+                      price,
+                      strike: strikePrice,
+                      isIntro: isProFirstMonth,
+                      discountLabel,
+                    } = getDisplayPrice(p, isYearly);
+                    const rawPrice = p.monthlyPrice;
+                    const credits = isYearly ? p.yearlyCredits : p.monthlyCredits;
+                    const isElite = p.tier === "elite";
+                    const isBusiness = p.tier === "business";
+
+                    const order: PlanTier[] = ["starter", "pro", "elite", "business"];
+                    const cur = (currentPlan ?? "starter").toLowerCase() as PlanTier;
+                    const curIdx = order.indexOf(cur);
+                    const thisIdx = order.indexOf(p.tier);
+                    const isCurrent = curIdx === thisIdx;
+                    const isLower = thisIdx < curIdx;
+                    const ctaLabel = isCurrent
+                      ? "Current plan"
+                      : isLower
+                        ? `Downgrade to ${p.name}`
+                        : `Get ${p.name}`;
+
+                    return (
+                      <motion.div
+                        key={p.tier}
+                        initial={{ opacity: 0, y: 30 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.6, delay: i * 0.1 }}
+                        className={`pricing-card-glass relative rounded-3xl flex flex-col ${isElite ? "pricing-card-elite md:scale-[1.03] z-10" : ""}`}
+                      >
+                        <div className="relative z-10 p-7 sm:p-8 flex flex-col flex-1">
+                          <h3
+                            className="font-garamond text-3xl text-foreground mb-4"
+                            style={{ letterSpacing: "0.02em" }}
+                          >
+                            {p.name}
+                          </h3>
+
+                          <div className="flex items-baseline gap-1.5">
+                            <span className="font-garamond text-2xl text-foreground">$</span>
+                            <CountUp
+                              value={price}
+                              className="font-garamond text-6xl leading-none text-foreground tabular-nums"
+                            />
+                            <span
+                              className="text-foreground text-xs ml-1 uppercase"
+                              style={{ letterSpacing: "0.2em" }}
                             >
-                              <motion.span
-                                className="shrink-0 mt-[3px] inline-flex items-center justify-center"
+                              /{isProFirstMonth ? "1st mo" : isYearly ? "year" : "month"}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2 mt-3">
+                            <span className="text-xs text-foreground/85 line-through tabular-nums">
+                              $<CountUp value={strikePrice} />
+                            </span>
+                            <span
+                              className="text-[10px] uppercase px-2 py-0.5 rounded-full border border-foreground/40 text-foreground font-light"
+                              style={{ letterSpacing: "0.18em" }}
+                            >
+                              {discountLabel}
+                            </span>
+                          </div>
+
+                          {isProFirstMonth && (
+                            <p
+                              className="text-[10px] uppercase text-foreground/70 mt-2 font-light"
+                              style={{ letterSpacing: "0.18em" }}
+                            >
+                              Then ${rawPrice}/month
+                            </p>
+                          )}
+
+                          {/* Yearly maths spelled out so the offer never looks contradictory:
+                      12 months billed at the price of 8. */}
+                          {isYearly && rawPrice > 0 && (
+                            <p
+                              className="text-[10px] uppercase text-foreground/70 mt-2 font-light"
+                              style={{ letterSpacing: "0.18em" }}
+                            >
+                              ≈ ${Math.round(p.yearlyPrice / 12)}/month · pay{" "}
+                              {12 - YEARLY_FREE_MONTHS} months, get 12
+                            </p>
+                          )}
+
+                          {credits && (
+                            <p
+                              className="text-foreground text-[11px] mt-5 uppercase font-light"
+                              style={{ letterSpacing: "0.22em" }}
+                            >
+                              {credits}
+                            </p>
+                          )}
+
+                          <div
+                            className="h-px w-full my-7"
+                            style={{
+                              background:
+                                "linear-gradient(90deg, transparent, var(--overlay-white-18), transparent)",
+                            }}
+                          />
+
+                          {p.tier !== "starter" && (
+                            <button
+                              type="button"
+                              onClick={() => handleSubscribe(p.tier)}
+                              disabled={loadingTier !== null || isCurrent}
+                              className={`liquid-glass w-full py-3.5 rounded-full text-xs uppercase font-normal text-foreground disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2 ${isElite ? "bg-foreground/[0.04]" : ""}`}
+                              style={{ letterSpacing: "0.2em" }}
+                            >
+                              {loadingTier === p.tier ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                ctaLabel
+                              )}
+                            </button>
+                          )}
+
+                          {(() => {
+                            const list =
+                              (isYearly ? p.yearlyFeatures : p.monthlyFeatures) ?? p.features;
+                            const periodKey = isYearly ? "y" : "m";
+                            return (
+                              <motion.ul
+                                key={`${p.tier}-${periodKey}`}
+                                className="mt-7 space-y-3 flex-1"
+                                initial="hidden"
+                                animate="visible"
                                 variants={{
-                                  hidden: { scale: 0.4, rotate: -90, opacity: 0 },
+                                  hidden: {},
                                   visible: {
-                                    scale: 1,
-                                    rotate: 0,
-                                    opacity: 1,
-                                    transition: { duration: 0.45, ease: [0.34, 1.56, 0.64, 1] },
+                                    transition: { staggerChildren: 0.05, delayChildren: 0.08 },
                                   },
                                 }}
                               >
-                                {isUnlimited ? (
-                                  <MegsyStar className="w-3.5 h-3.5" />
-                                ) : (
-                                  <Check className="w-3.5 h-3.5 text-foreground" strokeWidth={2} />
-                                )}
-                              </motion.span>
-                              <span className="flex-1">{f}</span>
-                            </motion.li>
-                          );
-                        })}
-                      </motion.ul>
-
-                    );
-                  })()}
-
-                </div>
-              </motion.div>
-            );
-          })}
-
-          {/* Single-plan lineup — only Megsy Pro is offered. */}
-        </div>
-
-
-      </section>
-
-      {/* ============================ FAQ ============================ */}
-      <section id="pricing-faq" className="relative overflow-hidden bg-background py-16 md:py-28 scroll-mt-8">
-        {/* Massive FAQS headline */}
-        <motion.div
-          initial={{ opacity: 0, y: 40 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.9 }}
-          className="px-4"
-        >
-          <h2 className="font-display text-[24vw] md:text-[28vw] font-black uppercase leading-[0.8] tracking-tighter text-violet-500 text-center select-none">
-            FAQS
-          </h2>
-        </motion.div>
-
-        {/* Question list */}
-        <div className="mx-auto mt-16 max-w-6xl px-6">
-          <ul className="border-t border-foreground/10">
-            {FAQS.map((item, i) => {
-              const isOpen = openFaq === i;
-              return (
-                <li key={item.q} className="border-b border-foreground/10">
-                  <button
-                    type="button"
-                    onClick={() => setOpenFaq(isOpen ? null : i)}
-                    aria-expanded={isOpen}
-                    aria-controls={`pricing-faq-panel-${i}`}
-                    id={`pricing-faq-trigger-${i}`}
-                    className="flex w-full items-center justify-between gap-6 py-7 text-left transition-colors hover:text-foreground/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2 focus-visible:ring-offset-black rounded"
-                  >
-                    <span className="font-display text-lg font-bold text-foreground md:text-2xl">
-                      {item.q}
-                    </span>
-                    <span className="shrink-0 text-violet-400" aria-hidden="true">
-                      {isOpen ? (
-                        <Minus className="h-7 w-7" strokeWidth={2.5} />
-                      ) : (
-                        <Plus className="h-7 w-7" strokeWidth={2.5} />
-                      )}
-                    </span>
-                  </button>
-                  <AnimatePresence initial={false}>
-                    {isOpen && (
-                      <motion.div
-                        key="content"
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.3, ease: "easeInOut" }}
-                        className="overflow-hidden"
-                      >
-                        <p className="pb-7 pr-12 text-base leading-relaxed text-foreground/60 md:text-lg">
-                          {item.a}
-                        </p>
+                                {list.map((f, idx) => {
+                                  const isUnlimited = /unlimited/i.test(f);
+                                  const isSave =
+                                    /^save\s|\bbonus\b|\blocked-?in\b|2 months free/i.test(f);
+                                  return (
+                                    <motion.li
+                                      key={`${f}-${idx}`}
+                                      className="flex items-start gap-3 text-[13px] leading-snug"
+                                      style={{
+                                        color: "#ffffff",
+                                        fontWeight: isUnlimited || isSave ? 500 : 400,
+                                      }}
+                                      variants={{
+                                        hidden: { opacity: 0, x: -18, filter: "blur(6px)" },
+                                        visible: {
+                                          opacity: 1,
+                                          x: 0,
+                                          filter: "blur(0px)",
+                                          transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] },
+                                        },
+                                      }}
+                                    >
+                                      <motion.span
+                                        className="shrink-0 mt-[3px] inline-flex items-center justify-center"
+                                        variants={{
+                                          hidden: { scale: 0.4, rotate: -90, opacity: 0 },
+                                          visible: {
+                                            scale: 1,
+                                            rotate: 0,
+                                            opacity: 1,
+                                            transition: {
+                                              duration: 0.45,
+                                              ease: [0.34, 1.56, 0.64, 1],
+                                            },
+                                          },
+                                        }}
+                                      >
+                                        {isUnlimited ? (
+                                          <MegsyStar className="w-3.5 h-3.5" />
+                                        ) : (
+                                          <Check
+                                            className="w-3.5 h-3.5 text-foreground"
+                                            strokeWidth={2}
+                                          />
+                                        )}
+                                      </motion.span>
+                                      <span className="flex-1">{f}</span>
+                                    </motion.li>
+                                  );
+                                })}
+                              </motion.ul>
+                            );
+                          })()}
+                        </div>
                       </motion.div>
-                    )}
-                  </AnimatePresence>
-                </li>
-              );
-            })}
-          </ul>
+                    );
+                  })}
 
-          <div className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-6 text-xs uppercase font-light text-foreground/70" style={{ letterSpacing: "0.18em" }}>
-            <a href="mailto:support@megsyai.com" className="hover:text-foreground transition-colors">
-              support@megsyai.com
-            </a>
-            <span className="hidden sm:inline text-foreground/65">·</span>
-            <a href="tel:+201098821812" className="hover:text-foreground transition-colors">
-              +20 109 882 1812
-            </a>
-            <span className="hidden sm:inline text-foreground/65">·</span>
-            <button
-              onClick={() => navigate("/refund")}
-              className="hover:text-foreground transition-colors"
-            >
-              Refund Policy
-            </button>
-          </div>
-        </div>
-      </section>
+                  {/* Single-plan lineup — only Megsy Pro is offered. */}
+                </div>
+              </section>
 
+              {/* ============================ FAQ ============================ */}
+              <section
+                id="pricing-faq"
+                className="relative overflow-hidden bg-background py-16 md:py-28 scroll-mt-8"
+              >
+                {/* Massive FAQS headline */}
+                <motion.div
+                  initial={{ opacity: 0, y: 40 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.9 }}
+                  className="px-4"
+                >
+                  <h2 className="font-display text-[24vw] md:text-[28vw] font-black uppercase leading-[0.8] tracking-tighter text-violet-500 text-center select-none">
+                    FAQS
+                  </h2>
+                </motion.div>
 
-      {/* ============================ FOOTER ============================ */}
-      {settled && (
-        <Suspense fallback={null}>
-          <LandingFooter />
-        </Suspense>
-      )}
+                {/* Question list */}
+                <div className="mx-auto mt-16 max-w-6xl px-6">
+                  <ul className="border-t border-foreground/10">
+                    {FAQS.map((item, i) => {
+                      const isOpen = openFaq === i;
+                      return (
+                        <li key={item.q} className="border-b border-foreground/10">
+                          <button
+                            type="button"
+                            onClick={() => setOpenFaq(isOpen ? null : i)}
+                            aria-expanded={isOpen}
+                            aria-controls={`pricing-faq-panel-${i}`}
+                            id={`pricing-faq-trigger-${i}`}
+                            className="flex w-full items-center justify-between gap-6 py-7 text-left transition-colors hover:text-foreground/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2 focus-visible:ring-offset-black rounded"
+                          >
+                            <span className="font-display text-lg font-bold text-foreground md:text-2xl">
+                              {item.q}
+                            </span>
+                            <span className="shrink-0 text-violet-400" aria-hidden="true">
+                              {isOpen ? (
+                                <Minus className="h-7 w-7" strokeWidth={2.5} />
+                              ) : (
+                                <Plus className="h-7 w-7" strokeWidth={2.5} />
+                              )}
+                            </span>
+                          </button>
+                          <AnimatePresence initial={false}>
+                            {isOpen && (
+                              <motion.div
+                                key="content"
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: "auto", opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.3, ease: "easeInOut" }}
+                                className="overflow-hidden"
+                              >
+                                <p className="pb-7 pr-12 text-base leading-relaxed text-foreground/60 md:text-lg">
+                                  {item.a}
+                                </p>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </li>
+                      );
+                    })}
+                  </ul>
 
-      {gatewaySheet !== null && (
-        <Suspense fallback={null}>
-          <PaymentGatewaySheet
-            open
-            onClose={() => {
-              if (gatewayLoading) return;
-              setGatewaySheet(null);
-              setLoadingTier(null);
-            }}
-            onSelect={runCheckout}
-            loading={gatewayLoading}
-            options={["local", "wallets"]}
-            labels={{ local: "Visa / Mastercard", wallets: "Vodafone Cash" }}
-            title="Choose payment method"
-            subtitle="Pay with Kashier."
-          />
-        </Suspense>
-      )}
+                  <div
+                    className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-6 text-xs uppercase font-light text-foreground/70"
+                    style={{ letterSpacing: "0.18em" }}
+                  >
+                    <a
+                      href="mailto:support@megsyai.com"
+                      className="hover:text-foreground transition-colors"
+                    >
+                      support@megsyai.com
+                    </a>
+                    <span className="hidden sm:inline text-foreground/65">·</span>
+                    <a href="tel:+201098821812" className="hover:text-foreground transition-colors">
+                      +20 109 882 1812
+                    </a>
+                    <span className="hidden sm:inline text-foreground/65">·</span>
+                    <button
+                      onClick={() => navigate("/refund")}
+                      className="hover:text-foreground transition-colors"
+                    >
+                      Refund Policy
+                    </button>
+                  </div>
+                </div>
+              </section>
+
+              {/* ============================ FOOTER ============================ */}
+              {settled && (
+                <Suspense fallback={null}>
+                  <LandingFooter />
+                </Suspense>
+              )}
+
+              {gatewaySheet !== null && (
+                <Suspense fallback={null}>
+                  <PaymentGatewaySheet
+                    open
+                    onClose={() => {
+                      if (gatewayLoading) return;
+                      setGatewaySheet(null);
+                      setLoadingTier(null);
+                    }}
+                    onSelect={runCheckout}
+                    loading={gatewayLoading}
+                    options={["local", "wallets"]}
+                    labels={{ local: "Visa / Mastercard", wallets: "Vodafone Cash" }}
+                    title="Choose payment method"
+                    subtitle="Pay with Kashier."
+                  />
+                </Suspense>
+              )}
             </div>
           </div>
         </main>

@@ -54,14 +54,18 @@ function normalizeLearningAnswerForModel(text: string): string {
   if (!trimmed.startsWith("[LEARN_ANSWER]")) return text;
 
   const type = readLearnAnswerField(trimmed, "type") || "answer";
-  const result = readLearnAnswerField(trimmed, "result") || readLearnAnswerField(trimmed, "self_rating") || "submitted";
+  const result =
+    readLearnAnswerField(trimmed, "result") ||
+    readLearnAnswerField(trimmed, "self_rating") ||
+    "submitted";
   const chosen =
     readLearnAnswerField(trimmed, "chosen") ||
     readLearnAnswerField(trimmed, "entered") ||
     readLearnAnswerField(trimmed, "summary") ||
     readLearnAnswerField(trimmed, "self_rating") ||
     "";
-  const correct = readLearnAnswerField(trimmed, "correct") || readLearnAnswerField(trimmed, "back") || "";
+  const correct =
+    readLearnAnswerField(trimmed, "correct") || readLearnAnswerField(trimmed, "back") || "";
   const isWrong = /incorrect|wrong|didnt/i.test(result);
 
   return [
@@ -274,7 +278,11 @@ export async function runChatStreamTurn(opts: RunChatStreamTurnOptions): Promise
     }));
   };
 
-  let capturedUsage: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } | null = null;
+  let capturedUsage: {
+    prompt_tokens?: number;
+    completion_tokens?: number;
+    total_tokens?: number;
+  } | null = null;
   let capturedModel: string | null = null;
 
   const buildAssistantMetadata = (extra?: Record<string, unknown>) => {
@@ -292,10 +300,12 @@ export async function runChatStreamTurn(opts: RunChatStreamTurnOptions): Promise
         snippet: source.snippet,
       }));
     }
-    if (isDeepResearch && researchTrace.length > 0) metadata.researchTrace = researchTrace.slice(-40);
+    if (isDeepResearch && researchTrace.length > 0)
+      metadata.researchTrace = researchTrace.slice(-40);
     if (isDeepResearch) {
       metadata.researchStatus = hadStreamError ? "error" : "done";
-      if (hadStreamError && researchErrorMessage) metadata.researchErrorMessage = researchErrorMessage;
+      if (hadStreamError && researchErrorMessage)
+        metadata.researchErrorMessage = researchErrorMessage;
     }
     if (generatedVideos.length > 0) metadata.videos = generatedVideos;
     if (generatedAudios.length > 0) metadata.audios = generatedAudios;
@@ -332,11 +342,12 @@ export async function runChatStreamTurn(opts: RunChatStreamTurnOptions): Promise
 
   /** Human readable one-liner for a tool call, used in the thinking badge. */
   const prettyToolLabel = (name?: unknown, target?: unknown) => {
-    const n = String(name || "tool").replace(/[_\-.]+/g, " ").trim();
+    const n = String(name || "tool")
+      .replace(/[_\-.]+/g, " ")
+      .trim();
     const t = String(target || "").trim();
     return t ? `${n} · ${t}` : n;
   };
-
 
   // ---------------------------------------------------------------------
   // Smooth reveal. Some backend paths (tool / MCP turns) flush the whole
@@ -355,7 +366,9 @@ export async function runChatStreamTurn(opts: RunChatStreamTurnOptions): Promise
   };
 
   const displayedContent = () =>
-    revealedLen >= assistantContent.length ? assistantContent : assistantContent.slice(0, revealedLen);
+    revealedLen >= assistantContent.length
+      ? assistantContent
+      : assistantContent.slice(0, revealedLen);
 
   const flushAssistantUpdate = () => {
     assistantRenderTimer = null;
@@ -496,9 +509,7 @@ export async function runChatStreamTurn(opts: RunChatStreamTurnOptions): Promise
     const lastMsg = allMessages[allMessages.length - 1];
     const merged = `${header}\n\n${fileTexts}`;
     if (typeof lastMsg.content === "string") {
-      lastMsg.content = lastMsg.content
-        ? `${lastMsg.content}\n\n${merged}`
-        : merged;
+      lastMsg.content = lastMsg.content ? `${lastMsg.content}\n\n${merged}` : merged;
     } else if (Array.isArray(lastMsg.content)) {
       // Multimodal message (has images/videos): append the file text as a
       // trailing text part so vision + docs work together.
@@ -575,7 +586,6 @@ export async function runChatStreamTurn(opts: RunChatStreamTurnOptions): Promise
       }
     : undefined;
 
-
   // Deep Research fetches its own live sources above. Leaving the backend's
   // own web tool on makes the stream hang with zero tokens (verified), so it
   // stays off for research turns.
@@ -623,7 +633,8 @@ export async function runChatStreamTurn(opts: RunChatStreamTurnOptions): Promise
    */
   if (!isDeepResearch) {
     try {
-      const { shouldRunAgent, agentStepBudget, runAgentTask } = await import("@/lib/agent/openManus");
+      const { shouldRunAgent, agentStepBudget, runAgentTask } =
+        await import("@/lib/agent/openManus");
       if (shouldRunAgent(lastUserText, String(chatMode))) {
         setIsThinking(true);
         setSearchStatus("Planning");
@@ -638,7 +649,6 @@ export async function runChatStreamTurn(opts: RunChatStreamTurnOptions): Promise
             // Show the agent's actual reasoning line, not a step counter.
             narrate(detail === label ? label : detail.slice(0, 200));
           },
-
         });
         if (result?.answer) {
           const evidence = `Work completed by the agent (${result.steps} steps). Use this as the verified result:\n\n${result.answer}`;
@@ -690,7 +700,6 @@ export async function runChatStreamTurn(opts: RunChatStreamTurnOptions): Promise
   armStallWatchdog();
 
   await streamChat({
-
     localPipeline: researchPipeline,
     messages: allMessages,
 
@@ -724,23 +733,25 @@ export async function runChatStreamTurn(opts: RunChatStreamTurnOptions): Promise
 
     selectedModel: selectedModel ? { id: selectedModel.id, cost: selectedModel.cost } : undefined,
     activeSkill: undefined,
-    availableSkills: isDeepResearch ? [] : [
-      ...enabledSkills,
-      ...librarySkills.filter((l) => !enabledSkills.some((e) => e.name === l.name)),
-    ]
-      .slice(0, 16)
-      .map((s) => ({
-        id: s.id,
-        name: s.name,
-        description: s.description,
-        triggers: s.triggers || [],
-        source: s.source,
-        // The backend needs the actual playbook + allowed tools, otherwise a
-        // matched skill can be named but never executed.
-        instructions: (s.instructions || s.body || "").slice(0, 4000),
-        enabled_tools: s.enabled_tools || [],
-        preferred_model: s.preferred_model || null,
-      })),
+    availableSkills: isDeepResearch
+      ? []
+      : [
+          ...enabledSkills,
+          ...librarySkills.filter((l) => !enabledSkills.some((e) => e.name === l.name)),
+        ]
+          .slice(0, 16)
+          .map((s) => ({
+            id: s.id,
+            name: s.name,
+            description: s.description,
+            triggers: s.triggers || [],
+            source: s.source,
+            // The backend needs the actual playbook + allowed tools, otherwise a
+            // matched skill can be named but never executed.
+            instructions: (s.instructions || s.body || "").slice(0, 4000),
+            enabled_tools: s.enabled_tools || [],
+            preferred_model: s.preferred_model || null,
+          })),
     onDelta: updateAssistant,
     onReasoning: (delta: string) => {
       if (!delta) return;
@@ -843,7 +854,9 @@ export async function runChatStreamTurn(opts: RunChatStreamTurnOptions): Promise
           // stream end and re-renders. assistant-ui Tool primitives can
           // later read the same data via the external-store adapter.
           setMessages((prev) => {
-            const idx = prev.findIndex((message) => message.clientId === `assistant-${localTurnId}`);
+            const idx = prev.findIndex(
+              (message) => message.clientId === `assistant-${localTurnId}`,
+            );
             if (idx < 0 || prev[idx]?.role !== "assistant") return prev;
             const msg = prev[idx];
             const nextParts = [...(msg.toolParts || [])];
@@ -856,7 +869,7 @@ export async function runChatStreamTurn(opts: RunChatStreamTurnOptions): Promise
               args: payload.args ?? payload.arguments,
               state: "running" as const,
             };
-          upsertAssistantToolPart(part);
+            upsertAssistantToolPart(part);
             if (existing >= 0) nextParts[existing] = { ...nextParts[existing], ...part };
             else nextParts.push(part);
             const next = prev.slice();
@@ -910,9 +923,7 @@ export async function runChatStreamTurn(opts: RunChatStreamTurnOptions): Promise
             const result: any = payload?.result;
             if (result?.paywall || result?.error) videoGenerationActive = false;
           }
-          narrate(
-            `${payload.ok ? "✓" : "✕"} ${prettyToolLabel(payload.name, payload.target)}`,
-          );
+          narrate(`${payload.ok ? "✓" : "✕"} ${prettyToolLabel(payload.name, payload.target)}`);
           setToolActivity((prev) =>
             prev && prev.name === payload.name
               ? { ...prev, status: payload.ok ? "done" : "error" }
@@ -920,7 +931,9 @@ export async function runChatStreamTurn(opts: RunChatStreamTurnOptions): Promise
           );
           // Persist tool result on the assistant message.
           setMessages((prev) => {
-            const idx = prev.findIndex((message) => message.clientId === `assistant-${localTurnId}`);
+            const idx = prev.findIndex(
+              (message) => message.clientId === `assistant-${localTurnId}`,
+            );
             if (idx < 0 || prev[idx]?.role !== "assistant") return prev;
             const msg = prev[idx];
             if (!msg.toolParts?.length) return prev;
@@ -928,7 +941,9 @@ export async function runChatStreamTurn(opts: RunChatStreamTurnOptions): Promise
             let updated = false;
             let updatedLocal = false;
             assistantToolParts = assistantToolParts.map((p) => {
-              const matches = taskId ? p.id === taskId : p.name === payload.name && p.state === "running";
+              const matches = taskId
+                ? p.id === taskId
+                : p.name === payload.name && p.state === "running";
               if (!matches || updatedLocal) return p;
               updatedLocal = true;
               return {
@@ -949,7 +964,9 @@ export async function runChatStreamTurn(opts: RunChatStreamTurnOptions): Promise
               ];
             }
             const nextParts = msg.toolParts.map((p) => {
-              const matches = taskId ? p.id === taskId : p.name === payload.name && p.state === "running";
+              const matches = taskId
+                ? p.id === taskId
+                : p.name === payload.name && p.state === "running";
               if (!matches || updated) return p;
               updated = true;
               return {
@@ -1058,10 +1075,14 @@ export async function runChatStreamTurn(opts: RunChatStreamTurnOptions): Promise
               const directUrl: string | undefined =
                 (typeof result.audio_url === "string" && result.audio_url) ||
                 (typeof result.music_url === "string" && result.music_url) ||
-                (typeof result.url === "string" && /\.(mp3|wav|flac|m4a|ogg)(\?|$)/i.test(result.url) && result.url) ||
+                (typeof result.url === "string" &&
+                  /\.(mp3|wav|flac|m4a|ogg)(\?|$)/i.test(result.url) &&
+                  result.url) ||
                 undefined;
               if (directUrl) {
-                generatedAudios = [...generatedAudios, directUrl].filter((v, i, a) => a.indexOf(v) === i);
+                generatedAudios = [...generatedAudios, directUrl].filter(
+                  (v, i, a) => a.indexOf(v) === i,
+                );
                 setMessages((prev) => {
                   const idx = prev.findIndex((m) => m.clientId === `assistant-${localTurnId}`);
                   const targetIndex = idx >= 0 ? idx : prev.length - 1;
@@ -1159,7 +1180,10 @@ export async function runChatStreamTurn(opts: RunChatStreamTurnOptions): Promise
                         }
                         if (status === "failed" || status === "error" || status === "cancelled") {
                           if (isDurableBgJob) {
-                            console.warn("[chat] durable video job reported transient failure; keeping poll alive:", data?.error);
+                            console.warn(
+                              "[chat] durable video job reported transient failure; keeping poll alive:",
+                              data?.error,
+                            );
                             continue;
                           }
                           // The poll endpoint auto-revives bg jobs that failed
@@ -1205,7 +1229,9 @@ export async function runChatStreamTurn(opts: RunChatStreamTurnOptions): Promise
         try {
           const { handleScheduleTag } = await import("@/lib/chat/handleScheduleTag");
           assistantContent = await handleScheduleTag(assistantContent);
-        } catch { /* noop */ }
+        } catch {
+          /* noop */
+        }
       }
       // Detect <MEGSY_MAIL .../> — the assistant's own mailbox tool.
       if (/<MEGSY_MAIL/i.test(assistantContent)) {
@@ -1220,7 +1246,10 @@ export async function runChatStreamTurn(opts: RunChatStreamTurnOptions): Promise
         setToolActivity({ name: "megsy_mail", appSlug: "email", status: "running" });
         updateAssistantMessage((message) => ({
           ...message,
-          toolParts: [...(message.toolParts || []).filter((part) => part.id !== mailTaskId), mailPart],
+          toolParts: [
+            ...(message.toolParts || []).filter((part) => part.id !== mailTaskId),
+            mailPart,
+          ],
         }));
         try {
           const { handleMailTag } = await import("@/lib/chat/handleMailTag");
@@ -1297,7 +1326,8 @@ export async function runChatStreamTurn(opts: RunChatStreamTurnOptions): Promise
           // If the model leaked website-style wording into a video reply
           // ("افتح الموقع", "خلال دقيقة", "ready in 1-2 minutes" ...),
           // replace the whole text with a clean single sentence.
-          const WEBSITE_LEAK_RE = /(افتح\s*الموقع|خلال\s*دقيق|ready in (?:a|1)?\s*-?\s*\d?\s*minute|open the site|preview_url|سيكون جاهز|متوفر الآن!?\s*افتح)/i;
+          const WEBSITE_LEAK_RE =
+            /(افتح\s*الموقع|خلال\s*دقيق|ready in (?:a|1)?\s*-?\s*\d?\s*minute|open the site|preview_url|سيكون جاهز|متوفر الآن!?\s*افتح)/i;
           if (WEBSITE_LEAK_RE.test(assistantContent)) {
             assistantContent = "Here is your video 👇";
           }
@@ -1324,7 +1354,8 @@ export async function runChatStreamTurn(opts: RunChatStreamTurnOptions): Promise
             if (!last || last.role !== "assistant") return prev;
             const hasVideo = Array.isArray(last.videos) && last.videos.length > 0;
             if (!hasVideo) return prev;
-            const WEBSITE_LEAK_RE = /(افتح\s*الموقع|خلال\s*دقيق|ready in (?:a|1)?\s*-?\s*\d?\s*minute|open the site|preview_url|سيكون جاهز|متوفر الآن!?\s*افتح)/i;
+            const WEBSITE_LEAK_RE =
+              /(افتح\s*الموقع|خلال\s*دقيق|ready in (?:a|1)?\s*-?\s*\d?\s*minute|open the site|preview_url|سيكون جاهز|متوفر الآن!?\s*افتح)/i;
             if (!WEBSITE_LEAK_RE.test(last.content || "")) return prev;
             const next = prev.slice();
             assistantContent = "Here is your video 👇";
@@ -1350,7 +1381,10 @@ export async function runChatStreamTurn(opts: RunChatStreamTurnOptions): Promise
             return true;
           })
           .map((s) => {
-            const title = (s.title || "").replace(/[\[\]()]/g, " ").replace(/\s+/g, " ").trim();
+            const title = (s.title || "")
+              .replace(/[\[\]()]/g, " ")
+              .replace(/\s+/g, " ")
+              .trim();
             return `- [${title || s.url}](${s.url})`;
           });
         assistantContent = assistantContent
@@ -1373,7 +1407,12 @@ export async function runChatStreamTurn(opts: RunChatStreamTurnOptions): Promise
           payload: { user_id: chatUserId, busy: false },
         });
       }
-      if (!assistantContent && searchImages.length === 0 && streamedProducts.length === 0 && !hasGeneratedVideo) {
+      if (
+        !assistantContent &&
+        searchImages.length === 0 &&
+        streamedProducts.length === 0 &&
+        !hasGeneratedVideo
+      ) {
         assistantContent = isArabicTurn
           ? "حصل تأخير في توليد الرد، لكن طلبك وصل. جرب تبعته تاني أو تخليه أقصر."
           : "There was a delay generating the response, but your request was received. Try sending it again or make it shorter.";
@@ -1493,7 +1532,6 @@ export async function runChatStreamTurn(opts: RunChatStreamTurnOptions): Promise
         // duplicate call to `openrouter-media` (kind: extract_memory) fired
         // for the same turn, doubling the model cost and racing the other
         // writer for the same facts — removed on purpose.
-
       }
     },
     onError: (err) => {
@@ -1529,7 +1567,12 @@ export async function runChatStreamTurn(opts: RunChatStreamTurnOptions): Promise
               // Surface the live computer session so the user sees the agent work.
               onTask: (taskId) => patch({ computerTaskId: taskId }),
               onStep: (title) => {
-                setToolActivity({ name: "browser", appSlug: "browser", status: "running", target: title });
+                setToolActivity({
+                  name: "browser",
+                  appSlug: "browser",
+                  status: "running",
+                  target: title,
+                });
                 // Mirror the agent's real steps into the thinking trace.
                 trace.push(title);
                 patch({ reasoning: trace.join("\n") });
@@ -1586,174 +1629,174 @@ export async function runChatStreamTurn(opts: RunChatStreamTurnOptions): Promise
   }
 
   function failTurnWithError(err: string) {
-      hadStreamError = true;
-      if (assistantRenderTimer) clearTimeout(assistantRenderTimer);
+    hadStreamError = true;
+    if (assistantRenderTimer) clearTimeout(assistantRenderTimer);
 
-
-      const isGuestQuota = err === GUEST_QUOTA_ERROR;
-      if (isGuestQuota) {
-        const guestMsg = [
-          "**You've used your free message.**",
-          "",
-          "Create a free account to keep chatting, save your history, and unlock voice, deep research, and more.",
-          "",
-          "[Create a free account →](/auth)",
-        ].join("\n");
-        assistantContent = guestMsg;
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.clientId === `assistant-${localTurnId}` ? { ...m, content: guestMsg } : m,
-          ),
-        );
-      } else {
-        toast.error(err);
+    const isGuestQuota = err === GUEST_QUOTA_ERROR;
+    if (isGuestQuota) {
+      const guestMsg = [
+        "**You've used your free message.**",
+        "",
+        "Create a free account to keep chatting, save your history, and unlock voice, deep research, and more.",
+        "",
+        "[Create a free account →](/auth)",
+      ].join("\n");
+      assistantContent = guestMsg;
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.clientId === `assistant-${localTurnId}` ? { ...m, content: guestMsg } : m,
+        ),
+      );
+    } else {
+      toast.error(err);
+    }
+    settleRunningTools("error");
+    setIsThinking(false);
+    setIsLoading(false);
+    resetToolUi();
+    if (presenceChannelRef.current && chatUserId) {
+      presenceChannelRef.current.send({
+        type: "broadcast",
+        event: "ai_busy",
+        payload: { user_id: chatUserId, busy: false },
+      });
+    }
+    if (isDeepResearch) {
+      updateAssistantMessage((message) => ({
+        ...message,
+        metadata: {
+          ...(message.metadata || {}),
+          kind: "deepResearch",
+          researchStatus: "error",
+          researchErrorMessage: researchErrorMessage || err,
+        },
+      }));
+    }
+    const fallbackContent =
+      isDeepResearch && !assistantContent.trim()
+        ? "Deep Research stopped before the final report was generated. The request was saved — please try again in a moment."
+        : "";
+    if (fallbackContent) {
+      assistantContent = fallbackContent;
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.clientId === `assistant-${localTurnId}` ? { ...m, content: fallbackContent } : m,
+        ),
+      );
+    } else if (!isGuestQuota && !assistantContent.trim()) {
+      assistantContent = err;
+      setMessages((prev) =>
+        prev.map((m) => (m.clientId === `assistant-${localTurnId}` ? { ...m, content: err } : m)),
+      );
+    } else if (!isGuestQuota) {
+      setMessages((prev) =>
+        prev[prev.length - 1]?.role === "assistant" && !prev[prev.length - 1]?.content
+          ? prev.slice(0, -1)
+          : prev,
+      );
+    }
+    void (async () => {
+      const contentToSave = assistantContent.trim();
+      const resolvedConversationId = await conversationPromise;
+      if (!resolvedConversationId) return;
+      if (isDeepResearch && !deepResearchPlaceholderId && deepResearchPlaceholderPromise) {
+        deepResearchPlaceholderId = await deepResearchPlaceholderPromise;
       }
-      settleRunningTools("error");
-      setIsThinking(false);
-      setIsLoading(false);
-      resetToolUi();
-      if (presenceChannelRef.current && chatUserId) {
-        presenceChannelRef.current.send({
-          type: "broadcast",
-          event: "ai_busy",
-          payload: { user_id: chatUserId, busy: false },
-        });
-      }
-      if (isDeepResearch) {
-        updateAssistantMessage((message) => ({
-          ...message,
-          metadata: {
-            ...(message.metadata || {}),
-            kind: "deepResearch",
-            researchStatus: "error",
-            researchErrorMessage: researchErrorMessage || err,
-          },
-        }));
-      }
-      const fallbackContent =
-        isDeepResearch && !assistantContent.trim()
-          ? "Deep Research stopped before the final report was generated. The request was saved — please try again in a moment."
-          : "";
-      if (fallbackContent) {
-        assistantContent = fallbackContent;
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.clientId === `assistant-${localTurnId}` ? { ...m, content: fallbackContent } : m,
-          ),
-        );
-      } else if (!isGuestQuota && !assistantContent.trim()) {
-        assistantContent = err;
-        setMessages((prev) =>
-          prev.map((m) => (m.clientId === `assistant-${localTurnId}` ? { ...m, content: err } : m)),
-        );
-      } else if (!isGuestQuota) {
-        setMessages((prev) =>
-          prev[prev.length - 1]?.role === "assistant" && !prev[prev.length - 1]?.content
-            ? prev.slice(0, -1)
-            : prev,
-        );
-      }
-      void (async () => {
-        const contentToSave = assistantContent.trim();
-        const resolvedConversationId = await conversationPromise;
-        if (!resolvedConversationId) return;
-        if (isDeepResearch && !deepResearchPlaceholderId && deepResearchPlaceholderPromise) {
-          deepResearchPlaceholderId = await deepResearchPlaceholderPromise;
-        }
-        if (!contentToSave) {
-          if (isDeepResearch && deepResearchPlaceholderId) {
-            void supabase
-              .from("messages")
-              .delete()
-              .eq("id", deepResearchPlaceholderId)
-              .then(() => {});
-          }
-          return;
-        }
-        let aId: string | undefined;
+      if (!contentToSave) {
         if (isDeepResearch && deepResearchPlaceholderId) {
-          const { error } = await supabase
+          void supabase
             .from("messages")
-            .update({
-              content: contentToSave,
-              images: searchImages.length > 0 ? searchImages : null,
-              metadata: buildAssistantMetadata() ?? null,
-            } as any)
-            .eq("id", deepResearchPlaceholderId);
-          if (error) {
-            const insertedId = await saveMessage(
-              resolvedConversationId,
-              "assistant",
-              contentToSave,
-              searchImages.length > 0 ? searchImages : undefined,
-              buildAssistantMetadata(),
-            );
-            aId = insertedId;
-          } else {
-            aId = deepResearchPlaceholderId;
-          }
-        } else {
-          aId = await saveMessage(
+            .delete()
+            .eq("id", deepResearchPlaceholderId)
+            .then(() => {});
+        }
+        return;
+      }
+      let aId: string | undefined;
+      if (isDeepResearch && deepResearchPlaceholderId) {
+        const { error } = await supabase
+          .from("messages")
+          .update({
+            content: contentToSave,
+            images: searchImages.length > 0 ? searchImages : null,
+            metadata: buildAssistantMetadata() ?? null,
+          } as any)
+          .eq("id", deepResearchPlaceholderId);
+        if (error) {
+          const insertedId = await saveMessage(
             resolvedConversationId,
             "assistant",
             contentToSave,
             searchImages.length > 0 ? searchImages : undefined,
             buildAssistantMetadata(),
           );
+          aId = insertedId;
+        } else {
+          aId = deepResearchPlaceholderId;
         }
-        if (aId) ownInsertedIdsRef.current.add(aId);
-        const siteIdB = detectSiteBuildId(contentToSave);
-        if (siteIdB && aId) {
-          void updateMessageMetadata(aId, { siteBuild: { siteId: siteIdB }, kind: "siteBuild" });
-          setMessages((prev) =>
-            prev.map((m) =>
-              m.id === aId || m.clientId === `assistant-${localTurnId}`
-                ? { ...m, siteBuild: { siteId: siteIdB } }
-                : m,
-            ),
-          );
-        }
-        if (isDeepResearch && chatUserId) {
-          await supabase.from("research_reports").upsert(
-            {
-              user_id: chatUserId,
-              session_key: `conv_${resolvedConversationId}_${assistantMessageIndex}`,
-              query: userInput || "Deep Research",
-              report: contentToSave,
-              images: (searchImages.length > 0 ? searchImages : []) as any,
-              steps: [] as any,
-            } as any,
-            { onConflict: "user_id,session_key" },
-          );
-        }
-        // Fire-and-forget long-term memory extraction. Never blocks chat.
-        // Silent on failure; toasts a subtle "🧠 remembered" when facts were saved.
-        try {
-          void (async () => {
-            try {
-              const { data } = await supabase.functions.invoke("memory-extract", {
-                body: {
-                  user_message: userInput || "",
-                  assistant_reply: contentToSave,
-                  conversation_id: resolvedConversationId,
-                  message_id: aId || null,
-                },
+      } else {
+        aId = await saveMessage(
+          resolvedConversationId,
+          "assistant",
+          contentToSave,
+          searchImages.length > 0 ? searchImages : undefined,
+          buildAssistantMetadata(),
+        );
+      }
+      if (aId) ownInsertedIdsRef.current.add(aId);
+      const siteIdB = detectSiteBuildId(contentToSave);
+      if (siteIdB && aId) {
+        void updateMessageMetadata(aId, { siteBuild: { siteId: siteIdB }, kind: "siteBuild" });
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === aId || m.clientId === `assistant-${localTurnId}`
+              ? { ...m, siteBuild: { siteId: siteIdB } }
+              : m,
+          ),
+        );
+      }
+      if (isDeepResearch && chatUserId) {
+        await supabase.from("research_reports").upsert(
+          {
+            user_id: chatUserId,
+            session_key: `conv_${resolvedConversationId}_${assistantMessageIndex}`,
+            query: userInput || "Deep Research",
+            report: contentToSave,
+            images: (searchImages.length > 0 ? searchImages : []) as any,
+            steps: [] as any,
+          } as any,
+          { onConflict: "user_id,session_key" },
+        );
+      }
+      // Fire-and-forget long-term memory extraction. Never blocks chat.
+      // Silent on failure; toasts a subtle "🧠 remembered" when facts were saved.
+      try {
+        void (async () => {
+          try {
+            const { data } = await supabase.functions.invoke("memory-extract", {
+              body: {
+                user_message: userInput || "",
+                assistant_reply: contentToSave,
+                conversation_id: resolvedConversationId,
+                message_id: aId || null,
+              },
+            });
+            const saved = (data as any)?.saved ?? 0;
+            const titles: string[] = (data as any)?.titles ?? [];
+            if (saved > 0 && typeof window !== "undefined") {
+              const { toast } = await import("sonner");
+              const preview = titles.slice(0, 2).join(" · ");
+              toast(`🧠 ${saved === 1 ? "Remembered" : `Remembered ${saved} facts`}`, {
+                description: preview || undefined,
+                duration: 3000,
               });
-              const saved = (data as any)?.saved ?? 0;
-              const titles: string[] = (data as any)?.titles ?? [];
-              if (saved > 0 && typeof window !== "undefined") {
-                const { toast } = await import("sonner");
-                const preview = titles.slice(0, 2).join(" · ");
-                toast(
-                  `🧠 ${saved === 1 ? "Remembered" : `Remembered ${saved} facts`}`,
-                  { description: preview || undefined, duration: 3000 },
-                );
-              }
-            } catch { /* silent */ }
-          })();
-        } catch {}
-      })();
-      isSubmittingRef.current = false;
+            }
+          } catch {
+            /* silent */
+          }
+        })();
+      } catch {}
+    })();
+    isSubmittingRef.current = false;
   }
 }
-
