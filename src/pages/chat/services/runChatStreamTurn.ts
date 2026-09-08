@@ -1374,8 +1374,9 @@ export async function runChatStreamTurn(opts: RunChatStreamTurnOptions): Promise
         });
       }
       if (!assistantContent && searchImages.length === 0 && streamedProducts.length === 0 && !hasGeneratedVideo) {
-        assistantContent =
-          "There was a delay generating the response, but your request was received. Try sending it again or make it shorter.";
+        assistantContent = isArabicTurn
+          ? "حصل تأخير في توليد الرد، لكن طلبك وصل. جرب تبعته تاني أو تخليه أقصر."
+          : "There was a delay generating the response, but your request was received. Try sending it again or make it shorter.";
         setMessages((prev) => {
           const assistantIndex = prev.findIndex((m) => m.clientId === `assistant-${localTurnId}`);
           const targetIndex = assistantIndex >= 0 ? assistantIndex : prev.length - 1;
@@ -1578,6 +1579,11 @@ export async function runChatStreamTurn(opts: RunChatStreamTurnOptions): Promise
     },
     signal: controller.signal,
   });
+
+  if (stallTimer) {
+    clearTimeout(stallTimer);
+    stallTimer = null;
+  }
 
   function failTurnWithError(err: string) {
       hadStreamError = true;
