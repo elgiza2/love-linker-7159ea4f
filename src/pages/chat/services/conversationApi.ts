@@ -133,6 +133,14 @@ export interface CreateOrUpdateOptions {
 }
 
 /**
+ * Guards against duplicate rows in the sidebar. A single turn asks for the
+ * conversation from several places (the send path, the turn runner, uploads)
+ * before React has propagated the new id, so without this every call used to
+ * insert its own row and the sidebar filled up with copies of the same chat.
+ */
+let pendingCreate: Promise<string | null> | null = null;
+
+/**
  * Returns the existing conversationId or creates a new conversation row
  * (insert + title kickoff). Returns null when the user is unauthenticated
  * or the insert fails.
@@ -142,6 +150,17 @@ export async function createOrUpdateConversation(
   opts: CreateOrUpdateOptions,
 ): Promise<string | null> {
   if (opts.conversationId) return opts.conversationId;
+  if (pendingCreate) return pendingCreate;
+  pendingCreate = insertConversation(firstMessage, opts).finally(() => {
+    pendingCreate = null;
+  });
+  return pendingCreate;
+}
+
+async function insertConversation(
+  firstMessage: string,
+  opts: CreateOrUpdateOptions,
+): Promise<string | null> {
   const user = await getCachedUser();
   if (!user) return null;
   const title = firstMessage.slice(0, 50) || "New Chat";

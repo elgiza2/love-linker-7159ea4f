@@ -657,6 +657,37 @@ export async function runChatStreamTurn(opts: RunChatStreamTurnOptions): Promise
     }
   }
 
+  // Stall watchdog: a request that never returns anything used to leave the
+  // "Thinking…" state hanging forever and then vanish with no answer. If no
+  // token, narration or tool activity arrives at all, end the turn with a
+  // clear, retryable message in the user's own language.
+  const isArabicTurn = /[\u0600-\u06FF]/.test(userInput || "");
+  const STALL_MS = 75_000;
+  const MAX_SILENT_ROUNDS = 4;
+  let silentRounds = 0;
+  let stallTimer: ReturnType<typeof setTimeout> | null = null;
+  const armStallWatchdog = () => {
+    stallTimer = setTimeout(() => {
+      if (hadStreamError || firstTokenAt || assistantContent.trim()) return;
+      const sawActivity = turnNarrations.length > 0 || assistantToolParts.length > 0;
+      silentRounds = sawActivity ? 0 : silentRounds + 1;
+      if (sawActivity || silentRounds < MAX_SILENT_ROUNDS) {
+        armStallWatchdog();
+        return;
+      }
+      try {
+        controller.abort();
+      } catch {
+        /* already closed */
+      }
+      failTurnWithError(
+        isArabicTurn
+          ? "الخدمة أخدت وقت طويل ولم يوصل رد. جرب تبعت الرسالة تاني."
+          : "The service took too long and no reply arrived. Please send your message again.",
+      );
+    }, STALL_MS);
+  };
+  armStallWatchdog();
 
   await streamChat({
 
@@ -1343,8 +1374,9 @@ export async function runChatStreamTurn(opts: RunChatStreamTurnOptions): Promise
         });
       }
       if (!assistantContent && searchImages.length === 0 && streamedProducts.length === 0 && !hasGeneratedVideo) {
-        assistantContent =
-          "There was a delay generating the response, but your request was received. Try sending it again or make it shorter.";
+        assistantContent = isArabicTurn
+          ? "حصل تأخير في توليد الرد، لكن طلبك وصل. جرب تبعته تاني أو تخليه أقصر."
+          : "There was a delay generating the response, but your request was received. Try sending it again or make it shorter.";
         setMessages((prev) => {
           const assistantIndex = prev.findIndex((m) => m.clientId === `assistant-${localTurnId}`);
           const targetIndex = assistantIndex >= 0 ? assistantIndex : prev.length - 1;
@@ -1547,6 +1579,11 @@ export async function runChatStreamTurn(opts: RunChatStreamTurnOptions): Promise
     },
     signal: controller.signal,
   });
+
+  if (stallTimer) {
+    clearTimeout(stallTimer);
+    stallTimer = null;
+  }
 
   function failTurnWithError(err: string) {
       hadStreamError = true;
