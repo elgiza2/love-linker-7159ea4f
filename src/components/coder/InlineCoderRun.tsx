@@ -596,415 +596,140 @@ export default function InlineCoderRun({ runId, prompt, onClose, onFinish, previ
 
 
 
+  // ── Chat-native rendering ────────────────────────────────────────────────
+  // A build reads like a normal turn: a short message, the same thinking trace
+  // used everywhere else, then a preview card and a files card.
+  const prose = useMemo(() => {
+    const raw = notes
+      .replace(/```[\s\S]*?```/g, "")
+      .replace(/^\s*[-*]\s+\[( |x|X)\]\s+.*$/gm, "")
+      .replace(/<{5,}[\s\S]*?>{5,}/g, "")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+    return raw.slice(0, 1200);
+  }, [notes]);
+
+  const previewHtml = useMemo(() => {
+    if (status !== "done" || projectFiles.length === 0) return "";
+    try {
+      const html =
+        buildProjectPreviewHtml(projectFiles) ||
+        (isReactProject(projectFiles) ? buildReactRuntimeHtml(projectFiles, "Preview") : "") ||
+        "";
+      return html ? withRuntimeShim(html) : "";
+    } catch {
+      return "";
+    }
+  }, [status, projectFiles]);
+
   return (
-    <div className="my-3 w-full">
-      {/* Quiet status row — reads like part of the conversation, not a product panel. */}
-      <div className="flex flex-wrap items-center gap-2 pb-1">
-        <div className="flex items-center gap-2 min-w-[140px] flex-1">
-          {status === "running" ? (
-            <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-foreground/60" />
-          ) : status === "done" ? (
-            <Check className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
-          ) : (
-            <X className="h-3.5 w-3.5 shrink-0 text-destructive" />
-          )}
-          <div className="truncate text-[13px] text-foreground/70">
-            {status === "running"
-              ? runningLabel
-              : status === "done"
-                ? `Done · ${files.size} files`
-                : `Error: ${error}`}
-          </div>
-        </div>
+    <div className="my-3 w-full min-w-0">
+      <ThinkingTrace
+        variant="tools"
+        active={status === "running"}
+        running={status === "running"}
+        tool="code"
+        status={status === "running" ? runningLabel : undefined}
+        steps={steps}
+        text={notes}
+      />
 
-        {status === "done" && todos.length > 0 && todos.some((t) => !t.done) && (
-          <Button
-            size="sm"
-            variant="secondary"
-            className="h-7 text-xs"
-            title="The build stopped before every task was done — continue it"
-            onClick={() => {
-              const remaining = todos.filter((t) => !t.done).map((t) => `- ${t.title}`).join("\n");
-              window.dispatchEvent(
-                new CustomEvent("megsy:coder-continue", {
-                  detail: {
-                    prompt: `Continue the previous build. Finish these remaining tasks without redoing completed work:\n${remaining}`,
-                  },
-                }),
-              );
-              toast.success("Continuing the build…");
-            }}
-          >
-            <PlayCircle className="h-3.5 w-3.5 mr-1" />
-            Continue
-          </Button>
-        )}
-        {status === "done" && files.size > 0 && (
-          <Button size="sm" variant="secondary" onClick={() => setCanvasOpen(true)} className="h-7 text-xs">
-            <Eye className="h-3.5 w-3.5 mr-1" />
-            Canvas
-          </Button>
-        )}
-        {status === "done" && files.size > 0 && (
-          <Button size="sm" variant="ghost" onClick={() => setStudioOpen(true)} className="h-7 text-xs text-foreground/80">
-            <Pencil className="h-3.5 w-3.5 mr-1" />
-            Studio
-          </Button>
-        )}
-        {status === "done" && files.size > 0 && (
-          <Button size="sm" variant="ghost" onClick={handlePreview} disabled={publishing} className="h-7 text-xs text-foreground/80">
-            {publishing ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <ExternalLink className="h-3.5 w-3.5 mr-1" />}
-            {publishing ? "Publishing…" : publishedId ? "Update site" : "Publish"}
-          </Button>
-        )}
-        {status === "done" && files.size > 0 && canUndo && (
-          <Button aria-label="Undo last change" size="sm" variant="ghost" onClick={handleUndo} className="h-7 text-xs text-foreground/80" title="Undo last change">
-            <Undo2 className="h-3.5 w-3.5" />
-          </Button>
-        )}
-        {status === "done" && files.size > 0 && (
-          <Button aria-label="Download project as ZIP" size="sm" variant="ghost" onClick={() => downloadProjectZip(projectFiles)} className="h-7 text-xs text-foreground/80" title="Download ZIP">
-            <Download className="h-3.5 w-3.5" />
-          </Button>
-        )}
-        {status === "done" && files.size > 0 && previousFiles && previousFiles.length > 0 && (
-          <Button aria-label="View changes vs previous run" size="sm" variant="ghost" onClick={() => setDiffOpen(true)} className="h-7 text-xs text-foreground/80" title="View diff vs previous run">
-            <GitCompare className="h-3.5 w-3.5" />
-          </Button>
-        )}
-        {status === "done" && files.size > 0 && (
-          <Button aria-label="Open in StackBlitz" size="sm" variant="ghost" onClick={() => openInStackBlitz(projectFiles, prompt.slice(0, 40) || "megsy-project")} className="h-7 text-xs text-foreground/80" title="Open in StackBlitz (real Vite build)">
-            <Zap className="h-3.5 w-3.5" />
-          </Button>
-        )}
-        {status === "done" && files.size > 0 && (
-          <Button aria-label="Push project to GitHub" size="sm" variant="ghost" onClick={() => pushProjectToGithub(projectFiles, prompt.slice(0, 40) || "megsy-project")} className="h-7 text-xs text-foreground/80" title="Push to GitHub">
-            <Github className="h-3.5 w-3.5" />
-          </Button>
-        )}
+      {prose && <ChatMessage role="assistant" content={prose} />}
 
+      {status === "error" && (
+        <p className="text-[13px] leading-relaxed text-destructive">{error}</p>
+      )}
 
-        <Button aria-label={collapsed ? "Expand run" : "Collapse run"} variant="ghost" size="icon" className="h-7 w-7" onClick={() => setCollapsed((c) => !c)}>
-          <ChevronDown className={cn("h-4 w-4 text-foreground/70 transition-transform", collapsed && "-rotate-90")} />
-        </Button>
-        <Button
-          aria-label={status === "running" ? "Stop and close run" : "Close run"}
-          title={status === "running" ? "Stop this build" : "Close"}
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7"
+      {status === "running" && (
+        <button
+          type="button"
           onClick={() => {
-            // Closing a live run used to leave the SSE stream and the paid
-            // asset jobs running in the background with no UI attached.
-            if (status === "running") {
-              finished.current = true;
-              abortCoderRun(runId);
-              setStatus("error");
-              setError("Build stopped.");
-            }
+            finished.current = true;
+            abortCoderRun(runId);
+            setStatus("error");
+            setError("Build stopped.");
             onClose();
           }}
+          className="mt-1 text-[12px] text-muted-foreground underline-offset-2 hover:underline"
         >
-          <X className="h-4 w-4 text-foreground/70" />
-        </Button>
-      </div>
+          {ar ? "إيقاف" : "Stop"}
+        </button>
+      )}
 
-      {collapsed ? null : (
-        <div className="theme-fixed coder-fixed overflow-hidden rounded-2xl border border-foreground/10 bg-foreground/[0.02]">
-          {/* Integration prompts */}
-          {integrations.length > 0 && (
-            <div className="flex flex-wrap gap-2 border-b border-foreground/10 p-3">
-              {integrations.map((ig) => (
-                <div
-                  key={ig.kind}
-                  className="flex min-w-[240px] flex-1 items-center gap-3 rounded-xl border border-foreground/10 bg-foreground/5 p-3"
-                >
-                  {ig.kind === "github" ? (
-                    <Github className="h-5 w-5 text-foreground/80" />
-                  ) : (
-                    <Database className="h-5 w-5 text-emerald-400" />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs font-medium text-foreground capitalize">
-                      Connect {ig.kind === "github" ? "GitHub" : "Supabase"}
-                    </div>
-                    <div className="text-[10px] text-foreground/60 truncate">{ig.reason}</div>
-                  </div>
-                  {ig.state === "pending" ? (
-                    <>
-                      <Button
-                        size="sm"
-                        className="h-7 text-xs"
-                        disabled={connecting !== null}
-                        onClick={() => connectIntegration(ig.kind)}
-                      >
-                        {connecting === ig.kind ? (
-                          <>
-                            <Loader2 className="h-3 w-3 mr-1 animate-spin" /> Connecting…
-                          </>
-                        ) : (
-                          <>
-                            Connect <ExternalLink className="h-3 w-3 mr-1" />
-                          </>
-                        )}
-                      </Button>
-
-
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-7 text-xs text-foreground/70"
-                        onClick={() => updateIntegration(ig.kind, "skipped")}
-                      >
-                        Skip
-                      </Button>
-                    </>
-                  ) : (
-                    <span
-                      className={cn(
-                        "text-[10px] px-2 py-0.5 rounded-full",
-                        ig.state === "connected"
-                          ? "bg-emerald-500/20 text-emerald-300"
-                          : "bg-foreground/10 text-foreground/50",
-                      )}
-                    >
-                      {ig.state === "connected" ? "✓ Connected" : "Skipped"}
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Tabs */}
-          <div className="flex gap-1 border-b border-foreground/10 px-2 py-1.5">
-            {(
-              [
-                { id: "plan", icon: ListTodo, label: "Plan", count: todos.length },
-                { id: "files", icon: FileCode, label: "Files", count: files.size },
-                { id: "assets", icon: ImageIcon, label: "Media", count: assets.length },
-                { id: "logs", icon: Terminal, label: "Log", count: bash.length },
-
-                { id: "notes", icon: Copy, label: "Notes", count: notes ? 1 : 0 },
-              ] as const
-            ).map((t) => (
-              <button
-                key={t.id}
-                onClick={() => setTab(t.id)}
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors",
-                  tab === t.id
-                    ? "bg-primary/20 text-foreground"
-                    : "text-foreground/60 hover:bg-foreground/5",
-                )}
+      {status === "done" && projectFiles.length > 0 && (
+        <div className="mt-3 space-y-3">
+          {/* Preview card */}
+          <div className="overflow-hidden rounded-2xl border border-border/50 bg-background/40">
+            <div className="flex items-center gap-2 border-b border-border/40 px-3 py-2">
+              <Eye className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="flex-1 truncate text-[12.5px] font-medium text-foreground">
+                {ar ? "معاينة الموقع" : "Site preview"}
+              </span>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 text-xs"
+                disabled={publishing}
+                onClick={handlePreview}
               >
-                <t.icon className="h-3.5 w-3.5" />
-                {t.label}
-                {t.count > 0 && (
-                  <span className="rounded-full bg-foreground/10 px-1.5 text-[10px]">{t.count}</span>
+                {publishing ? (
+                  <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <ExternalLink className="mr-1 h-3.5 w-3.5" />
                 )}
-              </button>
-            ))}
+                {publishing
+                  ? ar ? "جارٍ النشر…" : "Publishing…"
+                  : publishedId
+                    ? ar ? "تحديث الرابط" : "Update link"
+                    : ar ? "فتح برابط" : "Open link"}
+              </Button>
+            </div>
+            {previewHtml ? (
+              <iframe
+                title={ar ? "معاينة الموقع" : "Site preview"}
+                srcDoc={previewHtml}
+                sandbox="allow-scripts allow-forms allow-popups"
+                className="h-[360px] w-full bg-white"
+              />
+            ) : (
+              <div className="px-3 py-6 text-center text-[12.5px] text-muted-foreground">
+                {ar ? "هذا المشروع لا يمكن معاينته مباشرة." : "This project can’t be previewed inline."}
+              </div>
+            )}
           </div>
 
-          {/* Body */}
-          <div className="max-h-[420px] min-h-[180px] overflow-hidden">
-            {tab === "plan" && (
-              <div className="h-full max-h-[420px] overflow-y-auto p-4">
-                {todos.length === 0 ? (
-                  <div className="text-sm text-foreground/50">
-                    {status === "running" ? "Preparing plan…" : "No plan"}
-                  </div>
-                ) : (
-                  <ul className="space-y-2">
-                    {todos.map((t) => (
-                      <li
-                        key={t.id}
-                        className="flex items-start gap-2.5 rounded-lg border border-foreground/10 bg-foreground/5 px-3 py-2"
-                      >
-                        <span
-                          className={cn(
-                            "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded",
-                            t.done ? "bg-emerald-500 text-foreground" : "border border-foreground/30",
-                          )}
-                        >
-                          {t.done && <Check className="h-3 w-3" />}
-                        </span>
-                        <span className={cn("text-sm text-foreground", t.done && "text-foreground/65 line-through")}>
-                          {t.title}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            )}
-
-            {tab === "files" && (
-              <div className="flex h-full max-h-[420px]">
-                <div className="w-52 shrink-0 overflow-y-auto border-r border-foreground/10 p-2">
-                  {fileList.length === 0 && (
-                    <div className="p-2 text-xs text-foreground/50">No files yet…</div>
-                  )}
-                  {fileList.map((path) => (
-                    <button
-                      key={path}
-                      onClick={() => setSelectedFile(path)}
-                      className={cn(
-                        "block w-full truncate rounded px-2 py-1 text-left text-xs",
-                        selectedFile === path
-                          ? "bg-primary/20 text-foreground"
-                          : "text-foreground/70 hover:bg-foreground/5",
-                      )}
-                    >
-                      {path}
-                    </button>
-                  ))}
-                </div>
-                <div className="flex-1 overflow-auto bg-background/40">
-                  {selectedFile ? (
-                    <div className="min-h-full">
-                      <div className="sticky top-0 z-10 flex items-center justify-end gap-1 border-b border-foreground/10 bg-background/70 px-2 py-1 backdrop-blur">
-                        <button onClick={copyAllFiles} className="inline-flex items-center gap-1 rounded px-2 py-1 text-[11px] text-foreground/70 hover:bg-foreground/10">
-                          <Copy className="h-3 w-3" /> Copy all
-                        </button>
-                        <button onClick={downloadProjectJson} className="inline-flex items-center gap-1 rounded px-2 py-1 text-[11px] text-foreground/70 hover:bg-foreground/10">
-                          <Download className="h-3 w-3" /> JSON
-                        </button>
-                      </div>
-                      <pre className="p-3 text-xs leading-relaxed text-foreground/90">
-                        <code>{files.get(selectedFile)}</code>
-                      </pre>
-                    </div>
-                  ) : (
-                    <div className="p-4 text-xs text-foreground/50">Choose a file</div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {tab === "assets" && (
-              <div className="h-full max-h-[420px] overflow-y-auto p-3">
-                {assets.length === 0 ? (
-                  <div className="text-sm text-foreground/50">
-                    {status === "running"
-                      ? "Media is generated after the build finishes."
-                      : "This project needs no generated media."}
-                  </div>
-                ) : (
-                  <>
-                    <div className="mb-3 flex items-center justify-between text-[11px] text-foreground/60">
-                      <span>
-                        {assetPhase === "running" ? "Generating media…" : "Media used in the site"}
-                      </span>
-                      <span className="rounded-full bg-foreground/10 px-2 py-0.5">
-                        {estimateAssetCredits(assets.filter((a) => a.status === "done"))} credits used ·{" "}
-                        {estimateAssetCredits(assets)} total
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                      {assets.map((a) => (
-                        <div key={a.id} className="overflow-hidden rounded-xl border border-foreground/10 bg-foreground/5">
-                          <div className="flex aspect-video items-center justify-center bg-background/40">
-                            {a.status === "done" && a.url ? (
-                              a.kind === "video" ? (
-                                <video src={a.url} className="h-full w-full object-cover" muted loop playsInline />
-                              ) : (
-                                <img decoding="async" src={a.url} alt={a.prompt} loading="lazy" className="h-full w-full object-cover" />
-                              )
-                            ) : a.status === "error" ? (
-                              <span className="px-2 text-center text-[10px] text-red-300">{a.error}</span>
-                            ) : (
-                              <Loader2 className="h-4 w-4 animate-spin text-foreground/50" />
-                            )}
-                          </div>
-                          <div className="p-2">
-                            <div className="truncate text-[11px] text-foreground/80" title={a.prompt}>{a.prompt}</div>
-                            <div className="mt-1 flex items-center justify-between">
-                              <span className="text-[10px] text-foreground/65">
-                                {a.kind === "video" ? "Video" : "Image"} · {a.credits} credits
-                              </span>
-                              <button
-                                onClick={() => regenerateAsset(a.id)}
-                                disabled={a.status === "running"}
-                                className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] text-foreground/70 hover:bg-foreground/10 disabled:opacity-40"
-                              >
-                                <RefreshCw className={cn("h-3 w-3", a.status === "running" && "animate-spin")} />
-                                Redo
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
-
-
-            {tab === "logs" && (
-              <div className="h-full max-h-[420px] overflow-y-auto bg-background p-3 font-mono text-xs text-emerald-300">
-                {bash.length === 0 && <div className="text-foreground/65">No commands yet…</div>}
-                {bash.map((b, i) => (
-                  <div key={i} className="mb-2">
-                    <div className={cn("font-semibold", b.ok ? "text-cyan-300" : "text-red-400")}>
-                      $ {b.command}
-                    </div>
-                    <div className="whitespace-pre-wrap opacity-80">{b.output}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {tab === "notes" && (
-              <div className="h-full max-h-[420px] overflow-y-auto bg-background/60 p-3 text-xs leading-relaxed text-foreground/80 whitespace-pre-wrap">
-                {notes || (status === "running" ? "Waiting for coder notes…" : "No notes")}
-              </div>
-            )}
+          {/* Files card */}
+          <div className="overflow-hidden rounded-2xl border border-border/50 bg-background/40">
+            <div className="flex items-center gap-2 border-b border-border/40 px-3 py-2">
+              <FileCode className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="flex-1 truncate text-[12.5px] font-medium text-foreground">
+                {ar ? `ملفات الموقع · ${projectFiles.length}` : `Project files · ${projectFiles.length}`}
+              </span>
+              <Button
+                size="sm"
+                variant="secondary"
+                className="h-7 text-xs"
+                onClick={() => downloadProjectZip(projectFiles)}
+              >
+                <Download className="mr-1 h-3.5 w-3.5" />
+                ZIP
+              </Button>
+            </div>
+            <ul className="max-h-56 overflow-y-auto px-2 py-2">
+              {fileList.map((path) => (
+                <li
+                  key={path}
+                  className="truncate px-2 py-1 text-[12px] text-muted-foreground"
+                  dir="ltr"
+                >
+                  {path}
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
-
       )}
-      <Suspense fallback={null}>
-        {canvasOpen && (
-          <ArtifactCanvas
-            open={canvasOpen}
-            onOpenChange={setCanvasOpen}
-            content={notes || prompt}
-            files={projectFiles}
-          />
-        )}
-        {studioOpen && (
-          <CoderStudioModal
-            open={studioOpen}
-            onClose={() => setStudioOpen(false)}
-            initialFiles={projectFiles}
-            onFilesChange={(next) => {
-              setFiles(() => {
-                const m = new Map<string, string>();
-                for (const f of next) m.set(f.path, f.content);
-                filesRef.current = m;
-                return m;
-              });
-              try {
-                saveCheckpoint(checkpointId, next, "studio edit");
-                setCanUndo(listCheckpoints(checkpointId).length > 1);
-              } catch { /* best-effort */ }
-              onFinish?.(next.map(({ path, content }) => ({ path, content })));
-            }}
-
-          />
-        )}
-        {diffOpen && (
-          <CoderDiffModal
-            open={diffOpen}
-            onClose={() => setDiffOpen(false)}
-            baseline={(previousFiles || []).map((f) => ({ path: f.path, content: f.content, lang: (f.path.split(".").pop() || "txt").toLowerCase() }))}
-            current={projectFiles}
-          />
-        )}
-      </Suspense>
     </div>
   );
 }
+
