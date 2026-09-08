@@ -734,7 +734,7 @@ const PricingPage = () => {
                   {"Limited Launch Offer"}
                 </span>
                 <p className="text-[13px] text-foreground/90 leading-relaxed max-w-[16rem] sm:max-w-[18rem]">
-                  {"Pro first month $5 — 75% OFF the rest"}
+                  {`Pro first month $${INTRO_PRICE} — then $${PRO_MONTHLY_PRICE}/month`}
                 </p>
 
               </div>
