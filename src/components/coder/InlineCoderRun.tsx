@@ -146,7 +146,16 @@ export default function InlineCoderRun({ runId, prompt, onClose, onFinish, previ
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [assets, setAssets] = useState<CoderAsset[]>([]);
   const [assetPhase, setAssetPhase] = useState<"idle" | "running" | "done">("idle");
-  const [tab, setTab] = useState<"plan" | "files" | "assets" | "logs" | "notes">("plan");
+  /** Human-readable activity lines shown inside the thinking trace. */
+  const [steps, setSteps] = useState<string[]>([]);
+  const stepsRef = useRef<string[]>([]);
+  const pushStep = (line: string) => {
+    const v = line.trim();
+    if (!v || stepsRef.current.includes(v)) return;
+    stepsRef.current = [...stepsRef.current, v].slice(-60);
+    setSteps(stepsRef.current);
+  };
+
 
   // Collapsed by default: the build reads as a normal chat turn, and the
   // files/terminal detail is one tap away for anyone who wants it.
