@@ -124,10 +124,6 @@ export function MobileChatLandingMount(props: MobileChatLandingMountProps) {
           handleModeChange("images" as ChatMode);
           return;
         }
-        if (id === "video") {
-          handleModeChange("video" as ChatMode);
-          return;
-        }
         if (id === "website") {
           handleModeChange("code" as ChatMode);
           return;

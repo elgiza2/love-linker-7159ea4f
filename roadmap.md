@@ -75,3 +75,7 @@
 - [ ] Artifact capture: save files the agent produces into manus_artifacts + storage
 
 
+
+## طلبات 2026-09-08
+- [ ] إخفاء خدمة الفيديو مؤقتًا من واجهة الشات
+- [ ] ترتيب أزرار الخدمات بالعربية والإنجليزية بشكل نظيف وكامل

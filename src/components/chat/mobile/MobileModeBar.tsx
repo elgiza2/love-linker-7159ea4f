@@ -5,8 +5,6 @@ import {
   Microscope,
   Presentation,
   Image as ImageIcon,
-  Video as VideoIcon,
-  Music as MusicIcon,
   Code2,
   X,
   type LucideIcon,
@@ -37,15 +35,13 @@ type ModeDef = {
 const MODES: ModeDef[] = [
   { id: "code", label: "Coder Mode", Icon: Code2, color: "var(--mode-code)" },
   { id: "images", label: "Images", Icon: ImageIcon, color: "hsl(var(--brand-mint))" },
-  { id: "video", label: "Videos", Icon: VideoIcon, color: "var(--mode-video)" },
-
+  { id: "slides", label: "Slides", Icon: Presentation, color: "var(--mode-slides)" },
   {
     id: "deep-research",
     label: "Deep Research",
     Icon: Microscope,
     color: "hsl(var(--brand-blush))",
   },
-  { id: "slides", label: "Slides", Icon: Presentation, color: "var(--mode-slides)" },
   { id: "docs", label: "Docs", Icon: FileText, color: "var(--mode-docs)" },
   { id: "learning", label: "Learning", Icon: GraduationCap, color: "var(--mode-learning)" },
 ];
