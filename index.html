@@ -2,12 +2,21 @@
 <html lang="en" dir="ltr" class="dark" translate="no">
   <head>
     <meta charset="UTF-8" />
-    <!-- No loader / no splash. Page paints instantly on a plain background. -->
+    <!-- Branded boot mark: replaced by the app on mount, so a slow network
+         shows the product name softly pulsing instead of a blank page. -->
     <style>
       :root { color-scheme: dark; }
       html, body { background-color: #1c1c1c; margin: 0; }
       #root { min-height: 100dvh; background-color: #1c1c1c; }
       #root[data-snapshot-preview="true"] { pointer-events: none; user-select: none; contain: paint; }
+      #boot-mark {
+        position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+        font: 500 15px/1 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+        letter-spacing: 0.22em; text-transform: uppercase; color: rgba(255,255,255,0.42);
+        animation: boot-pulse 1.6s ease-in-out infinite;
+      }
+      @keyframes boot-pulse { 0%,100% { opacity: 0.35 } 50% { opacity: 0.85 } }
+      @media (prefers-reduced-motion: reduce) { #boot-mark { animation: none } }
     </style>
     <meta name="google" content="notranslate" />
 
@@ -204,7 +213,7 @@
         </filter>
       </defs>
     </svg>
-    <div id="root"></div>
+    <div id="root"><div id="boot-mark">Megsy</div></div>
 
     <!-- Speculation Rules API (Chromium 111+): registered from JS so weak
          devices, Data Saver and slow networks are skipped entirely — a full
