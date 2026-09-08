@@ -164,6 +164,35 @@ function firstUrl(value: unknown, depth = 0): string | null {
 }
 
 // ---------- deapi (v2) ----------
+/**
+ * deapi sits behind Cloudflare and intermittently answers 520/522/5xx while the
+ * origin GPU pool is saturated. Those are transient, so the submit call is
+ * retried with backoff instead of surfacing a raw gateway error to the user.
+ */
+async function fetchWithRetry(
+  input: string,
+  init: RequestInit,
+  attempts = 4,
+): Promise<{ res: Response; text: string }> {
+  let lastText = "";
+  let lastRes: Response | null = null;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const res = await fetch(input, init);
+      const text = await res.text();
+      if (res.ok || res.status < 500) return { res, text };
+      lastRes = res;
+      lastText = text;
+    } catch (e) {
+      lastText = e instanceof Error ? e.message : String(e);
+    }
+    if (i < attempts - 1) await sleep(1500 * (i + 1));
+  }
+  if (lastRes) return { res: lastRes, text: lastText };
+  throw new Error(lastText || "upstream unreachable");
+}
+
+
 async function deapiGenerate(opts: {
   key: string;
   model: string;
