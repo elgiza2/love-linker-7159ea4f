@@ -291,3 +291,100 @@ export async function renderfulVideoPoll(key: string, id: string): Promise<PollR
   }
   return { status: "processing", progress: Number(job?.progress ?? 0) };
 }
+
+/**
+ * Submit a Novita video task. Wan 2.2/2.5/2.6 go through the unified endpoint
+ * (`/v3/video/create`); Wan 2.7 has its own async endpoint. Both return a
+ * `task_id` polled through `/v3/async/task-result`.
+ */
+export async function novitaVideoSubmit(opts: {
+  key: string;
+  slug: string;
+  prompt: string;
+  duration: number;
+  aspectRatio?: string;
+  resolution?: string;
+  image?: string;
+  lastFrame?: string;
+  videoUrl?: string;
+  negativePrompt?: string;
+}): Promise<string> {
+  const cfg = NOVITA_VIDEO[opts.slug];
+  if (!cfg) throw new Error(`unknown Novita video model: ${opts.slug}`);
+  if (cfg.i2v && !cfg.v2v && !opts.image) {
+    throw new Error("this Novita model needs a reference image");
+  }
+  if (cfg.v2v && !opts.videoUrl && !opts.image) {
+    throw new Error("this Novita model needs a reference video or image");
+  }
+
+  const hd = /1080/.test(opts.resolution ?? "");
+  const duration = cfg.fixedDuration ?? Math.max(2, Math.min(cfg.maxDuration, Math.round(opts.duration) || 5));
+  const body: Record<string, unknown> = { prompt: opts.prompt };
+  if (opts.negativePrompt) body.negative_prompt = opts.negativePrompt;
+
+  if (cfg.native) {
+    // Model-native async endpoint (flat body).
+    body.duration = duration;
+    body.enable_prompt_expansion = true;
+    if (cfg.i2v) {
+      body.resolution = hd ? "1080P" : "720P";
+      if (opts.image) body.image_url = opts.image;
+      if (opts.lastFrame) body.last_frame_url = opts.lastFrame;
+      if (opts.videoUrl) body.first_clip_url = opts.videoUrl;
+    } else {
+      body.size = novitaSize(opts.aspectRatio, hd);
+    }
+    const res = await fetch(`${NOVITA_BASE}/v3/async/${cfg.native}`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${opts.key}`, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const text = await res.text();
+    if (!res.ok) throw new Error(`novita ${res.status}: ${text.slice(0, 300)}`);
+    const id = JSON.parse(text)?.task_id;
+    if (!id) throw new Error(`novita: no task id (${text.slice(0, 200)})`);
+    return String(id);
+  }
+
+  // Unified endpoint.
+  body.model = cfg.model;
+  body.duration = String(duration);
+  body.prompt_extend = true;
+  if (cfg.resolutionTier) {
+    body.resolution = hd ? "1080P" : "480P";
+  } else {
+    body.size = novitaSize(opts.aspectRatio, hd);
+  }
+  if (opts.image) body.image = opts.image;
+  if (opts.videoUrl) body.video = opts.videoUrl;
+
+  const res = await fetch(`${NOVITA_BASE}/v3/video/create`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${opts.key}`, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const text = await res.text();
+  if (!res.ok) throw new Error(`novita ${res.status}: ${text.slice(0, 300)}`);
+  const id = JSON.parse(text)?.task_id;
+  if (!id) throw new Error(`novita: no task id (${text.slice(0, 200)})`);
+  return String(id);
+}
+
+export async function novitaVideoPoll(key: string, id: string): Promise<PollResult> {
+  const st = await fetch(`${NOVITA_BASE}/v3/async/task-result?task_id=${encodeURIComponent(id)}`, {
+    headers: { Authorization: `Bearer ${key}` },
+  });
+  if (!st.ok) return { status: "processing" };
+  const payload: any = await st.json().catch(() => null);
+  const status = String(payload?.task?.status ?? "").toUpperCase();
+  if (status === "TASK_STATUS_SUCCEED") {
+    const url = payload?.videos?.[0]?.video_url ?? firstVideoUrl(payload);
+    if (url) return { status: "completed", video_url: String(url) };
+    return { status: "failed", error: "novita finished without a video URL" };
+  }
+  if (status === "TASK_STATUS_FAILED") {
+    return { status: "failed", error: String(payload?.task?.reason ?? "novita video task failed") };
+  }
+  return { status: "processing", progress: Number(payload?.task?.progress_percent ?? 0) };
+}
