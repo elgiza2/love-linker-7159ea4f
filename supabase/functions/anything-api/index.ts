@@ -207,6 +207,7 @@ async function deapiGenerate(opts: {
     : "https://api.deapi.ai/api/v2/images/generations";
   const seed = Math.floor(Math.random() * 2_147_483_647);
   let res: Response;
+  let text: string;
   if (editing) {
     // The edits endpoint is multipart/form-data with binary image parts —
     // image URLs are not accepted, so download the bytes first.
