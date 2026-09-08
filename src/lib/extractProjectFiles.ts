@@ -124,6 +124,11 @@ export function extractProjectFiles(content: string): ProjectFile[] {
     path = safeProjectPath(path);
     if (!path) continue;
     if (!/\.[a-z0-9]+$/i.test(path)) path = `${path}.${ext}`;
+    // Models sometimes save JSX into a .ts/.js file, which no bundler (and no
+    // in-browser Babel transform) can parse. Give it the extension it needs.
+    if (/\.(ts|m?js)$/i.test(path) && /<[A-Za-z][A-Za-z0-9.]*[\s/>]/.test(body)) {
+      path = path.replace(/\.ts$/i, ".tsx").replace(/\.m?js$/i, ".jsx");
+    }
     files.push({ path, lang, content: body });
   }
   return files;
