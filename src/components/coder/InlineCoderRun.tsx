@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Loader2, FileCode, ExternalLink, Eye, Download } from "lucide-react";
 
-
 import { runKimiCoder, type KimiEvent, type KimiFile, type KimiTodo } from "@/lib/kimiCoder";
 import { Button } from "@/components/ui/button";
 import ThinkingTrace from "@/components/chat/ThinkingTrace";
@@ -22,16 +21,27 @@ import { downloadProjectZip, getCoderIntegrationStatus } from "@/lib/coderExport
 import { autoFixProjectFiles } from "@/lib/coderAutoFix";
 import { detectRequiredIntegrations } from "@/lib/coderIntegrationDetect";
 import {
-  findAssetRequests, generateAssets, applyAssetsToFiles, stripUnresolvedTokens,
-  estimateAssetCredits, generateCoderImage, generateCoderVideo,
-  IMAGE_CREDITS, VIDEO_CREDITS, MAX_ASSETS_PER_RUN, type CoderAsset,
+  findAssetRequests,
+  generateAssets,
+  applyAssetsToFiles,
+  stripUnresolvedTokens,
+  estimateAssetCredits,
+  generateCoderImage,
+  generateCoderVideo,
+  IMAGE_CREDITS,
+  VIDEO_CREDITS,
+  MAX_ASSETS_PER_RUN,
+  type CoderAsset,
 } from "@/lib/coderAssets";
 import { saveCheckpoint, undoCheckpoint, listCheckpoints } from "@/lib/coderCheckpoints";
 import { isArabicUI } from "@/pages/chat/components/aui/toolPresentation";
 
-
 type BashLog = { command: string; output: string; ok: boolean };
-type IntegrationReq = { kind: "github" | "supabase"; reason: string; state: "pending" | "connected" | "skipped" };
+type IntegrationReq = {
+  kind: "github" | "supabase";
+  reason: string;
+  state: "pending" | "connected" | "skipped";
+};
 
 interface Props {
   runId: string;
@@ -45,7 +55,6 @@ interface Props {
   /** Hosted media the user attached to this turn — used inside the site. */
   attachments?: Array<{ url: string; name?: string; type?: string }>;
 }
-
 
 // Module-level cache so remounts of the parent don't re-fetch or abort the SSE run.
 type RunEntry = {
@@ -79,7 +88,6 @@ function subscribeCoderRun(
     history?: Array<{ role: "user" | "assistant"; content: string }>;
     attachments?: Array<{ url: string; name?: string; type?: string }>;
   },
-
 ): () => void {
   let entry = CODER_RUNS.get(runId);
   if (!entry) {
@@ -88,7 +96,13 @@ function subscribeCoderRun(
     const emit = (ev: KimiEvent) => {
       nextEntry.events.push(ev);
       if (ev.type === "done" || ev.type === "error") nextEntry.finished = true;
-      nextEntry.subs.forEach((s) => { try { s(ev); } catch { /* ignore */ } });
+      nextEntry.subs.forEach((s) => {
+        try {
+          s(ev);
+        } catch {
+          /* ignore */
+        }
+      });
     };
     entry = nextEntry;
     CODER_RUNS.set(runId, nextEntry);
@@ -99,32 +113,47 @@ function subscribeCoderRun(
       attachments: opts?.attachments,
       signal: controller.signal,
       onEvent: emit,
-
-    }).then(() => {
-      if (nextEntry.finished || controller.signal.aborted) return;
-      const files = collectFilesFromEvents(nextEntry.events);
-      if (files.length > 0) {
-        emit({ type: "done", files, summary: "Project generated." });
-      } else {
-        emit({ type: "error", error: "The connection ended before the project finished generating. Please try again." });
-      }
-    }).catch((e) => {
-      const ev: KimiEvent = { type: "error", error: e?.message || "network error" };
-      emit(ev);
-    });
+    })
+      .then(() => {
+        if (nextEntry.finished || controller.signal.aborted) return;
+        const files = collectFilesFromEvents(nextEntry.events);
+        if (files.length > 0) {
+          emit({ type: "done", files, summary: "Project generated." });
+        } else {
+          emit({
+            type: "error",
+            error: "The connection ended before the project finished generating. Please try again.",
+          });
+        }
+      })
+      .catch((e) => {
+        const ev: KimiEvent = { type: "error", error: e?.message || "network error" };
+        emit(ev);
+      });
   }
 
-  for (const ev of entry.events) { try { onEvent(ev); } catch { /* ignore */ } }
+  for (const ev of entry.events) {
+    try {
+      onEvent(ev);
+    } catch {
+      /* ignore */
+    }
+  }
   entry.subs.add(onEvent);
   const activeEntry = entry;
-  return () => { activeEntry.subs.delete(onEvent); };
+  return () => {
+    activeEntry.subs.delete(onEvent);
+  };
 }
-
 
 function abortCoderRun(runId: string) {
   const entry = CODER_RUNS.get(runId);
   if (!entry) return;
-  try { entry.controller.abort(); } catch { /* ignore */ }
+  try {
+    entry.controller.abort();
+  } catch {
+    /* ignore */
+  }
   CODER_RUNS.delete(runId);
 }
 
@@ -133,8 +162,15 @@ function coderRunSignal(runId: string): AbortSignal | undefined {
   return CODER_RUNS.get(runId)?.controller.signal;
 }
 
-
-export default function InlineCoderRun({ runId, prompt, onClose, onFinish, previousFiles, history, attachments }: Props) {
+export default function InlineCoderRun({
+  runId,
+  prompt,
+  onClose,
+  onFinish,
+  previousFiles,
+  history,
+  attachments,
+}: Props) {
   const instId = useRef(Math.random().toString(36).slice(2, 6)).current;
   const [todos, setTodos] = useState<KimiTodo[]>([]);
   const [files, setFiles] = useState<Map<string, string>>(new Map());
@@ -157,7 +193,6 @@ export default function InlineCoderRun({ runId, prompt, onClose, onFinish, previ
     setSteps(stepsRef.current);
   };
 
-
   // Collapsed by default: the build reads as a normal chat turn, and the
   // files/terminal detail is one tap away for anyone who wants it.
   const [collapsed, setCollapsed] = useState(true);
@@ -172,12 +207,10 @@ export default function InlineCoderRun({ runId, prompt, onClose, onFinish, previ
   const finished = useRef(false);
   const filesRef = useRef<Map<string, string>>(new Map());
   const notesRef = useRef("");
-  const integStatusRef = useRef<{ github: boolean; supabase: boolean }>({ github: false, supabase: false });
-
-  
-
-  
-
+  const integStatusRef = useRef<{ github: boolean; supabase: boolean }>({
+    github: false,
+    supabase: false,
+  });
 
   const mergeProjectFiles = (projectFiles: ProjectFile[]) => {
     if (projectFiles.length === 0) return;
@@ -185,7 +218,8 @@ export default function InlineCoderRun({ runId, prompt, onClose, onFinish, previ
       const next = new Map(prev);
       for (const file of projectFiles) {
         if (!prev.has(file.path)) pushStep(`${ar ? "إنشاء" : "Creating"} ${file.path}`);
-        else if (prev.get(file.path) !== file.content) pushStep(`${ar ? "تعديل" : "Editing"} ${file.path}`);
+        else if (prev.get(file.path) !== file.content)
+          pushStep(`${ar ? "تعديل" : "Editing"} ${file.path}`);
         next.set(file.path, file.content);
       }
       filesRef.current = next;
@@ -193,7 +227,6 @@ export default function InlineCoderRun({ runId, prompt, onClose, onFinish, previ
     });
     setSelectedFile((cur) => cur ?? projectFiles[0]?.path ?? null);
   };
-
 
   /**
    * Finish a run: resolve every media placeholder into a real generated asset,
@@ -246,10 +279,13 @@ export default function InlineCoderRun({ runId, prompt, onClose, onFinish, previ
       setAssetPhase("done");
       const ok = done.filter((a) => a.status === "done");
       if (ok.length > 0) {
-        toast.success(`${ok.length} media asset${ok.length > 1 ? "s" : ""} added · ${estimateAssetCredits(ok)} credits`);
+        toast.success(
+          `${ok.length} media asset${ok.length > 1 ? "s" : ""} added · ${estimateAssetCredits(ok)} credits`,
+        );
       }
       const failed = done.length - ok.length;
-      if (failed > 0) toast.error(`${failed} asset${failed > 1 ? "s" : ""} failed — you can regenerate them`);
+      if (failed > 0)
+        toast.error(`${failed} asset${failed > 1 ? "s" : ""} failed — you can regenerate them`);
     } else {
       final = stripUnresolvedTokens(scaffolded);
       if (final !== scaffolded) mergeProjectFiles(final);
@@ -259,11 +295,15 @@ export default function InlineCoderRun({ runId, prompt, onClose, onFinish, previ
     try {
       saveCheckpoint(checkpointId, final, "generated");
       setCanUndo(listCheckpoints(checkpointId).length > 1);
-    } catch { /* storage full — undo is best-effort */ }
+    } catch {
+      /* storage full — undo is best-effort */
+    }
 
-    onFinish?.(final.map(({ path, content }) => ({ path, content })), summary);
+    onFinish?.(
+      final.map(({ path, content }) => ({ path, content })),
+      summary,
+    );
   };
-
 
   /** Regenerate a single asset and re-inject it across the project. */
   const regenerateAsset = async (id: string) => {
@@ -282,10 +322,15 @@ export default function InlineCoderRun({ runId, prompt, onClose, onFinish, previ
       const done: CoderAsset = { ...target, status: "done", url };
       update(done);
       const current = Array.from(filesRef.current.entries()).map(([path, content]) => ({
-        path, content, lang: (path.split(".").pop() || "txt").toLowerCase(),
+        path,
+        content,
+        lang: (path.split(".").pop() || "txt").toLowerCase(),
       }));
       // Swap the old URL (already injected) as well as the original token.
-      const withOld: CoderAsset = { ...done, tokens: [...target.tokens, ...(target.url ? [target.url] : [])] };
+      const withOld: CoderAsset = {
+        ...done,
+        tokens: [...target.tokens, ...(target.url ? [target.url] : [])],
+      };
       mergeProjectFiles(applyAssetsToFiles(current, [withOld]));
       toast.success(`Regenerated · ${done.credits} credits`);
     } catch (e) {
@@ -293,8 +338,6 @@ export default function InlineCoderRun({ runId, prompt, onClose, onFinish, previ
       toast.error("Regeneration failed");
     }
   };
-
-
 
   /** Merge backend-emitted and locally-detected integration needs (no duplicates). */
   const addIntegrations = (reqs: { kind: "github" | "supabase"; reason: string }[]) => {
@@ -307,12 +350,14 @@ export default function InlineCoderRun({ runId, prompt, onClose, onFinish, previ
       }
       return next;
     });
-    void getCoderIntegrationStatus().then((s) => {
-      integStatusRef.current = { github: s.github, supabase: s.supabase };
-      setIntegrations((prev) =>
-        prev.map((p) => (s[p.kind] && p.state === "pending" ? { ...p, state: "connected" } : p)),
-      );
-    }).catch(() => {});
+    void getCoderIntegrationStatus()
+      .then((s) => {
+        integStatusRef.current = { github: s.github, supabase: s.supabase };
+        setIntegrations((prev) =>
+          prev.map((p) => (s[p.kind] && p.state === "pending" ? { ...p, state: "connected" } : p)),
+        );
+      })
+      .catch(() => {});
   };
 
   const appliedPatchesRef = useRef<Set<string>>(new Set());
@@ -327,7 +372,9 @@ export default function InlineCoderRun({ runId, prompt, onClose, onFinish, previ
     });
     if (fresh.length === 0) return;
     const current = Array.from(filesRef.current.entries()).map(([path, content]) => ({
-      path, content, lang: (path.split(".").pop() || "txt").toLowerCase(),
+      path,
+      content,
+      lang: (path.split(".").pop() || "txt").toLowerCase(),
     }));
     const { files: patched } = applyPatchBlocks(current, fresh);
     mergeProjectFiles(patched);
@@ -357,13 +404,14 @@ export default function InlineCoderRun({ runId, prompt, onClose, onFinish, previ
     const scaffolded = ensureProjectScaffold(
       autoFixProjectFiles(
         Array.from(filesRef.current.entries()).map(([path, content]) => ({
-          path, content, lang: (path.split(".").pop() || "txt").toLowerCase(),
+          path,
+          content,
+          lang: (path.split(".").pop() || "txt").toLowerCase(),
         })),
       ),
     );
     void completeRun(scaffolded, summary ?? notesRef.current.slice(0, 500));
     return true;
-
   };
 
   useEffect(() => {
@@ -401,93 +449,98 @@ export default function InlineCoderRun({ runId, prompt, onClose, onFinish, previ
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status]);
 
-
   useEffect(() => {
-    const unsub = subscribeCoderRun(runId, prompt, (ev: KimiEvent) => {
-      lastEventRef.current = Date.now();
-      sawEventRef.current = true;
-      if (ev.type === "todo") {
-        setTodos(ev.todos);
-        for (const t of ev.todos) pushStep(t.title);
-      }
+    const unsub = subscribeCoderRun(
+      runId,
+      prompt,
+      (ev: KimiEvent) => {
+        lastEventRef.current = Date.now();
+        sawEventRef.current = true;
+        if (ev.type === "todo") {
+          setTodos(ev.todos);
+          for (const t of ev.todos) pushStep(t.title);
+        } else if (ev.type === "text") {
+          const next = `${notesRef.current}${notesRef.current && ev.text ? "\n\n" : ""}${ev.text || ""}`;
+          notesRef.current = next;
+          setNotes(next);
+          mergeProjectFiles(extractProjectFiles(next));
+          applyPatchesFromNotes(next);
+        } else if (ev.type === "file") {
+          setFiles((prev) => {
+            const next = new Map(prev);
+            if (!prev.has(ev.path)) pushStep(`${ar ? "إنشاء" : "Creating"} ${ev.path}`);
+            else if (prev.get(ev.path) !== ev.content)
+              pushStep(`${ar ? "تعديل" : "Editing"} ${ev.path}`);
+            next.set(ev.path, ev.content);
+            filesRef.current = next;
+            return next;
+          });
+          setSelectedFile((cur) => cur ?? ev.path);
+        } else if (ev.type === "bash") {
+          pushStep(`$ ${ev.command}`);
+          setBash((prev) => [...prev, { command: ev.command, output: ev.output, ok: ev.ok }]);
+        } else if (ev.type === "integration") {
+          setIntegrations((prev) => {
+            if (prev.find((p) => p.kind === ev.kind)) return prev;
+            const preState = integStatusRef.current[ev.kind] ? "connected" : "pending";
+            return [...prev, { kind: ev.kind, reason: ev.reason, state: preState }];
+          });
+          getCoderIntegrationStatus()
+            .then((s) => {
+              integStatusRef.current = { github: s.github, supabase: s.supabase };
+              if ((ev.kind === "github" && s.github) || (ev.kind === "supabase" && s.supabase)) {
+                setIntegrations((prev) =>
+                  prev.map((p) => (p.kind === ev.kind ? { ...p, state: "connected" } : p)),
+                );
+              }
+            })
+            .catch(() => {});
+        } else if (ev.type === "done") {
+          if (finished.current) return;
+          finished.current = true;
+          // Merge (never replace): late-parsed files, streamed `file` events,
+          // patched files and the backend's own file list all contribute.
+          mergeProjectFiles(extractProjectFiles(notesRef.current));
+          applyPatchesFromNotes(notesRef.current);
+          const merged = new Map(filesRef.current);
+          for (const f of ev.files || []) if (f?.path) merged.set(f.path, f.content ?? "");
+          filesRef.current = merged;
+          const scaffolded = ensureProjectScaffold(
+            autoFixProjectFiles(
+              Array.from(merged.entries()).map(([path, content]) => ({
+                path,
+                content,
+                lang: (path.split(".").pop() || "txt").toLowerCase(),
+              })),
+            ),
+          );
+          void completeRun(scaffolded, ev.summary || notesRef.current.slice(0, 500));
+        } else if (ev.type === "error") {
+          if (finished.current) return;
+          // Fallback: if the stream errored/closed but we already have files,
+          // treat as done so the user can preview/publish/download.
+          if (finalizeFromRef()) return;
+          setStatus("error");
+          setError(ev.error);
+        }
+      },
+      { previousFiles, history, attachments },
+    );
 
-      else if (ev.type === "text") {
-        const next = `${notesRef.current}${notesRef.current && ev.text ? "\n\n" : ""}${ev.text || ""}`;
-        notesRef.current = next;
-        setNotes(next);
-        mergeProjectFiles(extractProjectFiles(next));
-        applyPatchesFromNotes(next);
-      }
-      else if (ev.type === "file") {
-        setFiles((prev) => {
-          const next = new Map(prev);
-          if (!prev.has(ev.path)) pushStep(`${ar ? "إنشاء" : "Creating"} ${ev.path}`);
-          else if (prev.get(ev.path) !== ev.content) pushStep(`${ar ? "تعديل" : "Editing"} ${ev.path}`);
-          next.set(ev.path, ev.content);
-          filesRef.current = next;
-          return next;
-        });
-        setSelectedFile((cur) => cur ?? ev.path);
-      } else if (ev.type === "bash") {
-        pushStep(`$ ${ev.command}`);
-        setBash((prev) => [...prev, { command: ev.command, output: ev.output, ok: ev.ok }]);
-      }
-
-      else if (ev.type === "integration") {
-        setIntegrations((prev) => {
-          if (prev.find((p) => p.kind === ev.kind)) return prev;
-          const preState = integStatusRef.current[ev.kind] ? "connected" : "pending";
-          return [...prev, { kind: ev.kind, reason: ev.reason, state: preState }];
-        });
-        getCoderIntegrationStatus().then((s) => {
-          integStatusRef.current = { github: s.github, supabase: s.supabase };
-          if ((ev.kind === "github" && s.github) || (ev.kind === "supabase" && s.supabase)) {
-            setIntegrations((prev) => prev.map((p) => (p.kind === ev.kind ? { ...p, state: "connected" } : p)));
-          }
-        }).catch(() => {});
-      } else if (ev.type === "done") {
-        if (finished.current) return;
-        finished.current = true;
-        // Merge (never replace): late-parsed files, streamed `file` events,
-        // patched files and the backend's own file list all contribute.
-        mergeProjectFiles(extractProjectFiles(notesRef.current));
-        applyPatchesFromNotes(notesRef.current);
-        const merged = new Map(filesRef.current);
-        for (const f of ev.files || []) if (f?.path) merged.set(f.path, f.content ?? "");
-        filesRef.current = merged;
-        const scaffolded = ensureProjectScaffold(
-          autoFixProjectFiles(
-            Array.from(merged.entries()).map(([path, content]) => ({
-              path, content, lang: (path.split(".").pop() || "txt").toLowerCase(),
-            })),
-          ),
-        );
-        void completeRun(scaffolded, ev.summary || notesRef.current.slice(0, 500));
-      } else if (ev.type === "error") {
-        if (finished.current) return;
-        // Fallback: if the stream errored/closed but we already have files,
-        // treat as done so the user can preview/publish/download.
-        if (finalizeFromRef()) return;
-        setStatus("error");
-        setError(ev.error);
-
-      }
-    }, { previousFiles, history, attachments });
-
-    return () => { unsub(); };
+    return () => {
+      unsub();
+    };
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [runId]);
   // Pre-warm integration status once so integration cards render without a "pending" flash.
   useEffect(() => {
-    getCoderIntegrationStatus().then((s) => {
-      integStatusRef.current = { github: s.github, supabase: s.supabase };
-    }).catch(() => {});
+    getCoderIntegrationStatus()
+      .then((s) => {
+        integStatusRef.current = { github: s.github, supabase: s.supabase };
+      })
+      .catch(() => {});
   }, []);
-
-
-
-
 
   const doneCount = todos.filter((t) => t.done).length;
   const fileList = useMemo(() => Array.from(files.keys()).sort(), [files]);
@@ -499,11 +552,12 @@ export default function InlineCoderRun({ runId, prompt, onClose, onFinish, previ
         : "Building… preparing";
 
   const projectFiles = useMemo<ProjectFile[]>(
-    () => Array.from(files.entries()).map(([path, content]) => ({
-      path,
-      content,
-      lang: (path.split(".").pop() || "txt").toLowerCase(),
-    })),
+    () =>
+      Array.from(files.entries()).map(([path, content]) => ({
+        path,
+        content,
+        lang: (path.split(".").pop() || "txt").toLowerCase(),
+      })),
     [files],
   );
 
@@ -533,11 +587,22 @@ export default function InlineCoderRun({ runId, prompt, onClose, onFinish, previ
     }
     setPublishing(true);
     try {
-      const { url, id, degraded } = await publishProject(projectFiles, { title: prompt.slice(0, 60), prompt, siteId: publishedId ?? undefined });
+      const { url, id, degraded } = await publishProject(projectFiles, {
+        title: prompt.slice(0, 60),
+        prompt,
+        siteId: publishedId ?? undefined,
+      });
       setPublishedId(id);
       try {
         await navigator.clipboard.writeText(url);
-        toast.success(degraded ? "Published as source view — link copied" : "Published — link copied", { description: degraded ? `${url} · this project can\u2019t run standalone, so the page shows its source files.` : url });
+        toast.success(
+          degraded ? "Published as source view — link copied" : "Published — link copied",
+          {
+            description: degraded
+              ? `${url} · this project can\u2019t run standalone, so the page shows its source files.`
+              : url,
+          },
+        );
       } catch {
         toast.success("Published", { description: url });
       }
@@ -547,7 +612,12 @@ export default function InlineCoderRun({ runId, prompt, onClose, onFinish, previ
       if (/sign in/i.test(msg)) {
         toast.error("Sign in to publish", {
           description: "Publishing saves your project so anyone with the link can view it.",
-          action: { label: "Sign in", onClick: () => { window.location.href = "/auth"; } },
+          action: {
+            label: "Sign in",
+            onClick: () => {
+              window.location.href = "/auth";
+            },
+          },
         });
       } else {
         toast.error(msg);
@@ -573,10 +643,6 @@ export default function InlineCoderRun({ runId, prompt, onClose, onFinish, previ
     onFinish?.(prev.files.map(({ path, content }) => ({ path, content })));
     toast.success("Reverted to the previous version");
   };
-
-
-
-
 
   // ── Chat-native rendering ────────────────────────────────────────────────
   // A build reads like a normal turn: a short message, the same thinking trace
@@ -660,10 +726,16 @@ export default function InlineCoderRun({ runId, prompt, onClose, onFinish, previ
                   <ExternalLink className="mr-1 h-3.5 w-3.5" />
                 )}
                 {publishing
-                  ? ar ? "جارٍ النشر…" : "Publishing…"
+                  ? ar
+                    ? "جارٍ النشر…"
+                    : "Publishing…"
                   : publishedId
-                    ? ar ? "تحديث الرابط" : "Update link"
-                    : ar ? "فتح برابط" : "Open link"}
+                    ? ar
+                      ? "تحديث الرابط"
+                      : "Update link"
+                    : ar
+                      ? "فتح برابط"
+                      : "Open link"}
               </Button>
             </div>
             {previewHtml ? (
@@ -675,7 +747,9 @@ export default function InlineCoderRun({ runId, prompt, onClose, onFinish, previ
               />
             ) : (
               <div className="px-3 py-6 text-center text-[12.5px] text-muted-foreground">
-                {ar ? "هذا المشروع لا يمكن معاينته مباشرة." : "This project can’t be previewed inline."}
+                {ar
+                  ? "هذا المشروع لا يمكن معاينته مباشرة."
+                  : "This project can’t be previewed inline."}
               </div>
             )}
           </div>
@@ -685,7 +759,9 @@ export default function InlineCoderRun({ runId, prompt, onClose, onFinish, previ
             <div className="flex items-center gap-2 border-b border-border/40 px-3 py-2">
               <FileCode className="h-3.5 w-3.5 text-muted-foreground" />
               <span className="flex-1 truncate text-[12.5px] font-medium text-foreground">
-                {ar ? `ملفات الموقع · ${projectFiles.length}` : `Project files · ${projectFiles.length}`}
+                {ar
+                  ? `ملفات الموقع · ${projectFiles.length}`
+                  : `Project files · ${projectFiles.length}`}
               </span>
               <Button
                 size="sm"
@@ -714,4 +790,3 @@ export default function InlineCoderRun({ runId, prompt, onClose, onFinish, previ
     </div>
   );
 }
-
