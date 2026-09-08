@@ -144,6 +144,7 @@ export default function InlineCoderRun({ runId, prompt, onClose, onFinish, previ
   const [error, setError] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
+  const ar = isArabicUI();
   const [assets, setAssets] = useState<CoderAsset[]>([]);
   const [assetPhase, setAssetPhase] = useState<"idle" | "running" | "done">("idle");
   /** Human-readable activity lines shown inside the thinking trace. */
@@ -224,7 +225,7 @@ export default function InlineCoderRun({ runId, prompt, onClose, onFinish, previ
     }
     if (requests.length > 0) {
       setAssetPhase("running");
-      setTab("assets");
+      pushStep(ar ? "توليد صور الموقع" : "Generating site media");
       const pending: CoderAsset[] = requests.map((r) => ({
         ...r,
         status: "pending",
@@ -564,8 +565,6 @@ export default function InlineCoderRun({ runId, prompt, onClose, onFinish, previ
     onFinish?.(prev.files.map(({ path, content }) => ({ path, content })));
     toast.success("Reverted to the previous version");
   };
-
-  const ar = isArabicUI();
 
 
 
