@@ -9,11 +9,13 @@ import { useEffect, useRef } from "react";
 export function useViewportPersistence(
   scrollerRef: React.RefObject<HTMLElement | null>,
   key: string = "megsy_chat_anchor",
+  enabled: boolean = true,
 ) {
   const anchorRef = useRef<{ id: string; offset: number } | null>(null);
   const viewportWidthRef = useRef(typeof window === "undefined" ? 0 : window.innerWidth);
 
   useEffect(() => {
+    if (!enabled) return;
     const scroller = scrollerRef.current;
     if (!scroller) return;
 
@@ -106,5 +108,5 @@ export function useViewportPersistence(
       clearTimeout(resizeTimer);
       cancelAnimationFrame(raf);
     };
-  }, [scrollerRef, key]);
+  }, [scrollerRef, key, enabled]);
 }
