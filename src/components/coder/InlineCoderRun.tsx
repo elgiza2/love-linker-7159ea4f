@@ -1,22 +1,24 @@
-/** @doc Megsy Coder inline run — renders todo/files/terminal/integration cards INSIDE the chat feed (not modal). */
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
-import {
-  Check, Loader2, FileCode, Terminal, ListTodo, X, Github, Database, Image as ImageIcon,
-  ExternalLink, Eye, ChevronDown, Copy, Download, Pencil, GitCompare, Zap, PlayCircle, RefreshCw, Undo2,
-} from "lucide-react";
+/** @doc Megsy Coder inline run — renders as a normal chat turn: thinking trace,
+ *  short message, then a site preview card and a project files card (ZIP). */
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Loader2, FileCode, ExternalLink, Eye, Download } from "lucide-react";
 
 
 import { runKimiCoder, type KimiEvent, type KimiFile, type KimiTodo } from "@/lib/kimiCoder";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import { publishProject } from "@/lib/publishProject";
+import ThinkingTrace from "@/components/chat/ThinkingTrace";
+import ChatMessage from "@/components/chat/ChatMessage";
+import { publishProject, withRuntimeShim } from "@/lib/publishProject";
+import { buildReactRuntimeHtml, isReactProject } from "@/lib/buildReactRuntime";
 import { toast } from "sonner";
-import { extractProjectFiles, ensureProjectScaffold, type ProjectFile } from "@/lib/extractProjectFiles";
+import {
+  extractProjectFiles,
+  ensureProjectScaffold,
+  buildProjectPreviewHtml,
+  type ProjectFile,
+} from "@/lib/extractProjectFiles";
 import { extractPatchBlocks, applyPatchBlocks } from "@/lib/coderPatch";
-import { downloadProjectZip, pushProjectToGithub, getCoderIntegrationStatus } from "@/lib/coderExport";
-import { openInStackBlitz } from "@/lib/coderStackBlitz";
-import { startIntegrationConnection, waitForConnectionRefresh, loadIntegrationConnections } from "@/lib/integrationBackend";
-import { integrations as integrationsCatalog } from "@/lib/integrationsData";
+import { downloadProjectZip, getCoderIntegrationStatus } from "@/lib/coderExport";
 import { autoFixProjectFiles } from "@/lib/coderAutoFix";
 import { detectRequiredIntegrations } from "@/lib/coderIntegrationDetect";
 import {
@@ -25,13 +27,8 @@ import {
   IMAGE_CREDITS, VIDEO_CREDITS, MAX_ASSETS_PER_RUN, type CoderAsset,
 } from "@/lib/coderAssets";
 import { saveCheckpoint, undoCheckpoint, listCheckpoints } from "@/lib/coderCheckpoints";
+import { isArabicUI } from "@/pages/chat/components/aui/toolPresentation";
 
-
-
-
-const ArtifactCanvas = lazy(() => import("@/components/chat/ArtifactCanvas"));
-const CoderStudioModal = lazy(() => import("@/components/coder/CoderStudioModal"));
-const CoderDiffModal = lazy(() => import("@/components/coder/CoderDiffModal"));
 
 type BashLog = { command: string; output: string; ok: boolean };
 type IntegrationReq = { kind: "github" | "supabase"; reason: string; state: "pending" | "connected" | "skipped" };
