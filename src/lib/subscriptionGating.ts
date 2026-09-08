@@ -65,7 +65,8 @@ export const canUseModel = (modelId: string, plan: string | null | undefined): b
 };
 
 export const canUseCodeWorkspace = (plan: string | null | undefined): boolean => {
-  return isPaidUser(plan);
+  void plan;
+  return true;
 };
 
 // Research depths that require a paid subscription.

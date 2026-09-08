@@ -1475,9 +1475,10 @@ const ChatPage = () => {
 
 
 
-    // Premium modes require an authenticated user. Normal/learning/shopping
-    // chat stays fully public so anyone can try the product without sign-up.
+    // Project-producing modes require an authenticated user so generated work
+    // can be saved safely. Access itself is not restricted to paid plans.
     const PROTECTED_MODES: ChatMode[] = [
+      "code",
       "deep-research",
       "slides",
       "slides-images",
@@ -1495,40 +1496,6 @@ const ChatPage = () => {
 
     // Code mode → run the inline Megsy Coder agent (Replit/Lovable style) inside the chat feed.
     if (chatMode === "code" && text.trim()) {
-      // Subscribers-only gate for the Coder builder — uses the single source
-      // of truth for paid-plan membership (`intentActions.isPaidPlan`) so
-      // gates never drift out of sync across the chat surface.
-      if (!isPaidUser(userPlan)) {
-
-        if (!chatUserId) {
-          toast.error("Sign in and subscribe to use Coder mode.");
-          zoneNavigate(
-            `/auth?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`,
-          );
-          return;
-        }
-        setMessages((prev) => [
-          ...prev,
-          {
-            role: "user",
-            clientId: `user-code-paywall-${Date.now()}`,
-            content: text,
-            mode: "code",
-          } as Message,
-          {
-            role: "assistant",
-            clientId: `assist-code-paywall-${Date.now()}`,
-            content:
-              "🔒 Coder mode is available to subscribers only. Upgrade your plan to start building full sites and apps inside chat.",
-            mode: "code",
-            paywall: { feature: "code" },
-          } as Message,
-        ]);
-        setInput("");
-        zoneNavigate("/pricing");
-        return;
-      }
-
       const promptText = text.trim();
       const runId = `coder-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       const userClientId = `user-coder-${Date.now()}`;
