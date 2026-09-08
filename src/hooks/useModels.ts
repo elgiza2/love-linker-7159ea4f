@@ -404,9 +404,9 @@ function alibabaRowToModelDetail(r: any): ModelDetail {
   } as ModelDetail;
 }
 
-const MODELS_CACHE_KEY = "megsy_cache_dynamic_models_v7";
+const MODELS_CACHE_KEY = "megsy_cache_dynamic_models_v8";
 const MODELS_CACHE_TTL = 24 * 60 * 60 * 1000; // 24h — admin-managed, rarely changes
-const MODEL_SOURCE_VERSION = "verified-live-v7";
+const MODEL_SOURCE_VERSION = "verified-live-v8";
 
 function readCachedModels(): ModelDetail[] | null {
   try {
