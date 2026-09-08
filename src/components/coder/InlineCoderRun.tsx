@@ -182,12 +182,17 @@ export default function InlineCoderRun({ runId, prompt, onClose, onFinish, previ
     if (projectFiles.length === 0) return;
     setFiles((prev) => {
       const next = new Map(prev);
-      for (const file of projectFiles) next.set(file.path, file.content);
+      for (const file of projectFiles) {
+        if (!prev.has(file.path)) pushStep(`${ar ? "إنشاء" : "Creating"} ${file.path}`);
+        else if (prev.get(file.path) !== file.content) pushStep(`${ar ? "تعديل" : "Editing"} ${file.path}`);
+        next.set(file.path, file.content);
+      }
       filesRef.current = next;
       return next;
     });
     setSelectedFile((cur) => cur ?? projectFiles[0]?.path ?? null);
   };
+
 
   /**
    * Finish a run: resolve every media placeholder into a real generated asset,
