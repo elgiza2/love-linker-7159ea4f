@@ -86,7 +86,7 @@ export const ChatMessagesArea = forwardRef<HTMLDivElement, ChatMessagesAreaProps
     const isEmpty = !loadingMessages && messages.length === 0;
     return (
       <div
-        className={`flex-1 min-h-0 relative z-[1] bg-transparent scrollbar-hide ${isEmpty ? "overflow-hidden" : "overflow-y-auto"}`}
+        className={`flex-1 min-h-0 relative z-[1] bg-transparent scrollbar-hide overscroll-contain touch-pan-y ${isEmpty ? "overflow-hidden" : "overflow-y-auto"}`}
         ref={messagesContainerRef}
         onScroll={handleScroll}
         role="log"
@@ -137,7 +137,6 @@ export const ChatMessagesArea = forwardRef<HTMLDivElement, ChatMessagesAreaProps
             {/* Desktop greeting moved into the composer dock (above input) so it
                 sits flush against the prompt box per product direction. */}
           </div>
-
         ) : (
           <div className="relative z-[1]">
             <Suspense fallback={<div className="pt-20 pb-44" aria-hidden />}>
