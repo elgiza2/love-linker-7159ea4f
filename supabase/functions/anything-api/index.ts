@@ -164,6 +164,35 @@ function firstUrl(value: unknown, depth = 0): string | null {
 }
 
 // ---------- deapi (v2) ----------
+/**
+ * deapi sits behind Cloudflare and intermittently answers 520/522/5xx while the
+ * origin GPU pool is saturated. Those are transient, so the submit call is
+ * retried with backoff instead of surfacing a raw gateway error to the user.
+ */
+async function fetchWithRetry(
+  input: string,
+  init: RequestInit,
+  attempts = 4,
+): Promise<{ res: Response; text: string }> {
+  let lastText = "";
+  let lastRes: Response | null = null;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const res = await fetch(input, init);
+      const text = await res.text();
+      if (res.ok || res.status < 500) return { res, text };
+      lastRes = res;
+      lastText = text;
+    } catch (e) {
+      lastText = e instanceof Error ? e.message : String(e);
+    }
+    if (i < attempts - 1) await sleep(1500 * (i + 1));
+  }
+  if (lastRes) return { res: lastRes, text: lastText };
+  throw new Error(lastText || "upstream unreachable");
+}
+
+
 async function deapiGenerate(opts: {
   key: string;
   model: string;
@@ -178,6 +207,7 @@ async function deapiGenerate(opts: {
     : "https://api.deapi.ai/api/v2/images/generations";
   const seed = Math.floor(Math.random() * 2_147_483_647);
   let res: Response;
+  let text: string;
   if (editing) {
     // The edits endpoint is multipart/form-data with binary image parts —
     // image URLs are not accepted, so download the bytes first.
@@ -197,16 +227,16 @@ async function deapiGenerate(opts: {
     );
     if (blobs.length === 1) form.append("image", blobs[0].blob, blobs[0].name);
     else for (const b of blobs) form.append("images[]", b.blob, b.name);
-    res = await fetch(endpoint, {
+    ({ res, text } = await fetchWithRetry(endpoint, {
       method: "POST",
       headers: { Authorization: `Bearer ${opts.key}`, Accept: "application/json" },
       body: form,
-    });
+    }));
   } else {
     const [width, height] = opts.aspectRatio === "9:16" ? [768, 1344]
       : opts.aspectRatio === "16:9" ? [1344, 768]
       : [1024, 1024];
-    res = await fetch(endpoint, {
+    ({ res, text } = await fetchWithRetry(endpoint, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${opts.key}`,
@@ -222,10 +252,15 @@ async function deapiGenerate(opts: {
         steps: opts.steps,
         guidance: 3.5,
       }),
-    });
+    }));
   }
-  const text = await res.text();
-  if (!res.ok) throw new Error(`deapi ${res.status}: ${text.slice(0, 300)}`);
+  if (!res.ok) {
+    // Cloudflare 5xx pages are noise to a chat user; keep the message human.
+    if (res.status >= 500) {
+      throw new Error("مزود الصور مشغول حاليًا. جرّب تبعت الطلب تاني بعد لحظات.");
+    }
+    throw new Error(`deapi ${res.status}: ${text.slice(0, 300)}`);
+  }
   let payload: any;
   try {
     payload = JSON.parse(text);
@@ -382,19 +417,20 @@ async function deapiVideoSubmit(opts: {
   form.append("steps", String(opts.steps));
 
   let res: Response;
+  let text: string;
   if (opts.image) {
     const r = await fetch(opts.image);
     if (!r.ok) throw new Error(`failed to download the reference image (${r.status})`);
     const ct = r.headers.get("content-type") ?? "image/png";
     const ext = ct.includes("jpeg") ? "jpg" : ct.includes("webp") ? "webp" : "png";
     form.append("image", await r.blob(), `frame.${ext}`);
-    res = await fetch("https://api.deapi.ai/api/v2/videos/generations", {
+    ({ res, text } = await fetchWithRetry("https://api.deapi.ai/api/v2/videos/generations", {
       method: "POST",
       headers: { Authorization: `Bearer ${opts.key}`, Accept: "application/json" },
       body: form,
-    });
+    }));
   } else {
-    const payload: Record<string, unknown> = {
+    const body: Record<string, unknown> = {
       model: opts.model,
       prompt: opts.prompt,
       width,
@@ -404,18 +440,22 @@ async function deapiVideoSubmit(opts: {
       fps: opts.fps,
       steps: opts.steps,
     };
-    res = await fetch("https://api.deapi.ai/api/v2/videos/generations", {
+    ({ res, text } = await fetchWithRetry("https://api.deapi.ai/api/v2/videos/generations", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${opts.key}`,
         Accept: "application/json",
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(payload),
-    });
+      body: JSON.stringify(body),
+    }));
   }
-  const text = await res.text();
-  if (!res.ok) throw new Error(`deapi ${res.status}: ${text.slice(0, 300)}`);
+  if (!res.ok) {
+    if (res.status >= 500) {
+      throw new Error("مزود الفيديو مشغول حاليًا. جرّب تاني بعد لحظات.");
+    }
+    throw new Error(`deapi ${res.status}: ${text.slice(0, 300)}`);
+  }
   const payload = JSON.parse(text);
   const id = payload?.data?.request_id ?? payload?.request_id ?? payload?.data?.id ?? payload?.id;
   if (!id) throw new Error(`deapi: no video request id (${text.slice(0, 200)})`);
