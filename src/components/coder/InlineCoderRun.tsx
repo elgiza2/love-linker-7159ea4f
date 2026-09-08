@@ -551,45 +551,9 @@ export default function InlineCoderRun({ runId, prompt, onClose, onFinish, previ
     toast.success("Reverted to the previous version");
   };
 
-  const updateIntegration = (kind: "github" | "supabase", state: "connected" | "skipped") => {
-    setIntegrations((prev) => prev.map((p) => (p.kind === kind ? { ...p, state } : p)));
-  };
+  const ar = isArabicUI();
 
-  const connectIntegration = async (kind: "github" | "supabase") => {
-    if (connecting) return; // a connect popup is already in flight
-    const integration = integrationsCatalog.find((i) => i.app === kind);
-    if (!integration) {
-      toast.error(`${kind} integration not available`);
-      return;
-    }
-    setConnecting(kind);
-    try {
-      // Fast path: already connected via /integrations.
-      const status = await getCoderIntegrationStatus();
-      if ((kind === "github" && status.github) || (kind === "supabase" && status.supabase)) {
-        updateIntegration(kind, "connected");
-        toast.success(`${kind === "github" ? "GitHub" : "Supabase"} already connected`);
-        return;
-      }
-      const result = await startIntegrationConnection(integration);
-      if (result.mode === "local") {
-        updateIntegration(kind, "connected");
-        toast.success(`${kind === "github" ? "GitHub" : "Supabase"} connected`);
-        return;
-      }
-      toast.success(`Finish connecting ${kind} in the popup`);
-      await waitForConnectionRefresh(async () => {
-        const snap = await loadIntegrationConnections([integration]);
-        return !!snap.connectedApps[integration.app];
-      }, (result as { popup?: Window | null }).popup ?? undefined);
-      updateIntegration(kind, "connected");
-      toast.success(`${kind === "github" ? "GitHub" : "Supabase"} connected`);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : `${kind} connect failed`);
-    } finally {
-      setConnecting(null);
-    }
-  };
+
 
 
 
