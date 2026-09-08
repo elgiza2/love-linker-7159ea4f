@@ -11,6 +11,9 @@ export function useViewportPersistence(
   key: string = "megsy_chat_anchor",
 ) {
   const anchorRef = useRef<{ id: string; offset: number } | null>(null);
+  const viewportWidthRef = useRef(
+    typeof window === "undefined" ? 0 : window.innerWidth,
+  );
 
   useEffect(() => {
     const scroller = scrollerRef.current;
@@ -86,14 +89,19 @@ export function useViewportPersistence(
 
     let resizeTimer: ReturnType<typeof setTimeout>;
     const onResize = () => {
+      const nextWidth = window.innerWidth;
+      const widthChanged = Math.abs(nextWidth - viewportWidthRef.current) >= 48;
+      viewportWidthRef.current = nextWidth;
+
+      // Mobile browsers resize the viewport height whenever the keyboard or
+      // browser chrome opens. Restoring an old message anchor in that case
+      // causes the transcript to jump upward and can fight touch scrolling.
+      if (!widthChanged) return;
       clearTimeout(resizeTimer);
       resizeTimer = setTimeout(restore, 60);
     };
     window.addEventListener("resize", onResize);
     window.addEventListener("orientationchange", restore);
-
-    // Initial restore attempt (e.g. hard reload with saved anchor).
-    setTimeout(restore, 120);
 
     return () => {
       io.disconnect();

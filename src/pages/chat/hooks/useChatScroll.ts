@@ -35,9 +35,10 @@ export function useChatScroll(params: {
   }, [messagesContainerRef, setShowScrollBtn, setNewMessagesCount]);
 
   const scrollToBottom = useCallback(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const el = messagesContainerRef.current;
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
     setNewMessagesCount(0);
-  }, [messagesEndRef, setNewMessagesCount]);
+  }, [messagesContainerRef, setNewMessagesCount]);
 
   const lastMsgCountRef = useRef(0);
 
@@ -50,9 +51,13 @@ export function useChatScroll(params: {
       messages.length > 0 &&
       messages[messages.length - 1].role === "user"
     ) {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      const frame = requestAnimationFrame(() => {
+        const el = messagesContainerRef.current;
+        if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+      });
+      return () => cancelAnimationFrame(frame);
     }
-  }, [messages.length, messagesEndRef]);
+  }, [messages.length, messagesContainerRef]);
 
   // Intentionally NO auto-scroll during assistant streaming.
   // The user must stay free to scroll anywhere (read the reply from the top,
