@@ -307,9 +307,8 @@ export async function renderfulVideoPoll(key: string, id: string): Promise<PollR
 }
 
 /**
- * Submit a Novita video task. Wan 2.2/2.5/2.6 go through the unified endpoint
- * (`/v3/video/create`); Wan 2.7 has its own async endpoint. Both return a
- * `task_id` polled through `/v3/async/task-result`.
+ * Submit a Novita video task on the model's own async endpoint and return the
+ * `task_id` (polled through `/v3/async/task-result`).
  */
 export async function novitaVideoSubmit(opts: {
   key: string;
@@ -321,26 +320,27 @@ export async function novitaVideoSubmit(opts: {
   image?: string;
   lastFrame?: string;
   videoUrl?: string;
+  audioUrl?: string;
   negativePrompt?: string;
 }): Promise<string> {
   const cfg = NOVITA_VIDEO[opts.slug];
   if (!cfg) throw new Error(`unknown Novita video model: ${opts.slug}`);
-  if (cfg.i2v && !cfg.v2v && !opts.image) {
-    throw new Error("this Novita model needs a reference image");
-  }
-  if (cfg.v2v && !opts.videoUrl && !opts.image) {
-    throw new Error("this Novita model needs a reference video or image");
-  }
+  if (cfg.i2v && !opts.image) throw new Error("this Novita model needs a reference image");
+  if (cfg.v2v && !opts.videoUrl) throw new Error("this Novita model needs a reference video");
 
   const hd = /1080/.test(opts.resolution ?? "");
-  const duration = cfg.fixedDuration ?? Math.max(2, Math.min(cfg.maxDuration, Math.round(opts.duration) || 5));
-  const body: Record<string, unknown> = { prompt: opts.prompt };
-  if (opts.negativePrompt) body.negative_prompt = opts.negativePrompt;
+  const duration = cfg.fixedDuration ??
+    Math.max(2, Math.min(cfg.maxDuration, Math.round(opts.duration) || 5));
+  const tier = cfg.resolutionTier
+    ? (hd ? "1080P" : cfg.path.startsWith("wan-2.2") || cfg.path.includes("2.5") ? "480P" : "720P")
+    : null;
 
-  if (cfg.native) {
-    // Model-native async endpoint (flat body).
-    body.duration = duration;
-    body.enable_prompt_expansion = true;
+  let body: Record<string, unknown>;
+  if (cfg.shape === "flat") {
+    // Wan 2.7 — flat body.
+    body = { prompt: opts.prompt, duration, enable_prompt_expansion: true };
+    if (opts.negativePrompt) body.negative_prompt = opts.negativePrompt;
+    if (opts.audioUrl) body.audio_url = opts.audioUrl;
     if (cfg.i2v) {
       body.resolution = hd ? "1080P" : "720P";
       if (opts.image) body.image_url = opts.image;
@@ -349,31 +349,23 @@ export async function novitaVideoSubmit(opts: {
     } else {
       body.size = novitaSize(opts.aspectRatio, hd);
     }
-    const res = await fetch(`${NOVITA_BASE}/v3/async/${cfg.native}`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${opts.key}`, "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    const text = await res.text();
-    if (!res.ok) throw new Error(`novita ${res.status}: ${text.slice(0, 300)}`);
-    const id = JSON.parse(text)?.task_id;
-    if (!id) throw new Error(`novita: no task id (${text.slice(0, 200)})`);
-    return String(id);
-  }
-
-  // Unified endpoint.
-  body.model = cfg.model;
-  body.duration = String(duration);
-  body.prompt_extend = true;
-  if (cfg.resolutionTier) {
-    body.resolution = hd ? "1080P" : "480P";
   } else {
-    body.size = novitaSize(opts.aspectRatio, hd);
-  }
-  if (opts.image) body.image = opts.image;
-  if (opts.videoUrl) body.video = opts.videoUrl;
+    // Wan 2.2 / 2.5 / 2.6 — DashScope-style nested body.
+    const input: Record<string, unknown> = { prompt: opts.prompt };
+    if (opts.negativePrompt) input.negative_prompt = opts.negativePrompt;
+    if (opts.audioUrl) input.audio_url = opts.audioUrl;
+    if (cfg.i2v && opts.image) input.img_url = opts.image;
+    if (cfg.v2v && opts.videoUrl) input.reference_video_urls = [opts.videoUrl];
 
-  const res = await fetch(`${NOVITA_BASE}/v3/video/create`, {
+    const parameters: Record<string, unknown> = { duration, prompt_extend: true };
+    if (tier) parameters.resolution = tier;
+    else parameters.size = novitaSize(opts.aspectRatio, hd);
+    if (cfg.audio) parameters.audio = true;
+
+    body = { input, parameters };
+  }
+
+  const res = await fetch(`${NOVITA_BASE}/v3/async/${cfg.path}`, {
     method: "POST",
     headers: { Authorization: `Bearer ${opts.key}`, "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -384,6 +376,7 @@ export async function novitaVideoSubmit(opts: {
   if (!id) throw new Error(`novita: no task id (${text.slice(0, 200)})`);
   return String(id);
 }
+
 
 export async function novitaVideoPoll(key: string, id: string): Promise<PollResult> {
   const st = await fetch(`${NOVITA_BASE}/v3/async/task-result?task_id=${encodeURIComponent(id)}`, {
