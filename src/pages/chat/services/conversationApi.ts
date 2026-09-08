@@ -72,8 +72,28 @@ export async function generateShortTitle(
     const words = title.split(/\s+/).filter(Boolean).slice(0, 4);
     // Drop a dangling connector left by the word cut ("... حسابك مش", "... of the").
     const dangling = new Set([
-      "مش", "في", "من", "على", "عن", "و", "أو", "ما", "لو", "إن",
-      "of", "the", "a", "an", "and", "or", "to", "for", "in", "on", "is", "are",
+      "مش",
+      "في",
+      "من",
+      "على",
+      "عن",
+      "و",
+      "أو",
+      "ما",
+      "لو",
+      "إن",
+      "of",
+      "the",
+      "a",
+      "an",
+      "and",
+      "or",
+      "to",
+      "for",
+      "in",
+      "on",
+      "is",
+      "are",
     ]);
     while (words.length > 1 && dangling.has(words[words.length - 1].toLowerCase())) words.pop();
     let finalTitle = words.join(" ").slice(0, 60);
@@ -81,8 +101,22 @@ export async function generateShortTitle(
     // Reject junk replies (yes/no/ok in AR/EN) — including ones that merely
     // start with a refusal — and fall back to an excerpt of the user's message.
     const junk = new Set([
-      "لا", "نعم", "حسنا", "حسناً", "أوك", "اوك", "طيب", "تمام",
-      "no", "yes", "ok", "okay", "sure", "hi", "hello", "hey",
+      "لا",
+      "نعم",
+      "حسنا",
+      "حسناً",
+      "أوك",
+      "اوك",
+      "طيب",
+      "تمام",
+      "no",
+      "yes",
+      "ok",
+      "okay",
+      "sure",
+      "hi",
+      "hello",
+      "hey",
     ]);
     const firstWord = (words[0] || "").replace(/[،,.!؟?:]+$/g, "").toLowerCase();
     if (!finalTitle || junk.has(finalTitle.trim().toLowerCase()) || junk.has(firstWord)) {

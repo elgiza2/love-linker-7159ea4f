@@ -1,13 +1,5 @@
 import { memo, useState, useEffect, useRef, useMemo, useCallback, useDeferredValue } from "react";
-import {
-  ArrowUp,
-  Square,
-  X,
-  Sparkles,
-  Loader2,
-  Pencil,
-  Plus,
-} from "lucide-react";
+import { ArrowUp, Square, X, Sparkles, Loader2, Pencil, Plus } from "lucide-react";
 import { m as motion, AnimatePresence } from "framer-motion";
 
 import ModelPickerDropdown from "@/components/model-picker/ModelPickerDropdown";
@@ -168,9 +160,6 @@ const AnimatedInput = ({
     return () => window.removeEventListener("megsy:composer-insert", insert);
   }, [onChange]);
 
-  
-
-
   useEffect(() => {
     valueRef.current = value;
   }, [value]);
@@ -191,10 +180,7 @@ const AnimatedInput = ({
     }
     // Desktop: Enter sends. Mobile: Enter inserts a newline (no preventDefault).
     const shouldForceSend =
-      forceEnterToSend &&
-      e.key === "Enter" &&
-      !e.shiftKey &&
-      !e.nativeEvent?.isComposing;
+      forceEnterToSend && e.key === "Enter" && !e.shiftKey && !e.nativeEvent?.isComposing;
     if (shouldForceSend || isSendKey(e)) {
       e.preventDefault();
       if (mentionOpen || modelPickerOpen) {
@@ -232,7 +218,6 @@ const AnimatedInput = ({
       setModelQuery("");
     }
   };
-
 
   const handleModelSelect = (model: AgentModel) => {
     // Replace #query with #model-label and keep it visible
@@ -281,7 +266,6 @@ const AnimatedInput = ({
   const compact = !focused && !hasText && !isEditing && !headerSlot;
 
   return (
-
     <div className="relative">
       <AnimatePresence>
         {/* @ mention dropdown removed by design. */}
@@ -297,7 +281,6 @@ const AnimatedInput = ({
       {/* The computer screen always sits above the input, never in place of it,
           so the input can never disappear when a task ends. */}
       <div className="md:rounded-[28px]">
-
         <motion.div
           data-compact={compact ? "true" : "false"}
           className={`chat-composer-frame chat-mobile-input-glow composer-card pointer-events-auto relative z-10 transition-[border-radius,margin,padding] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
@@ -312,11 +295,7 @@ const AnimatedInput = ({
             <div className="-mx-2.5 -mt-1 mb-2 pointer-events-auto md:-mx-3">{computerSlot}</div>
           ) : null}
           {/* Active service strip — fused into the top of the composer card */}
-          {headerSlot && (
-            <div className="pointer-events-auto -mx-1 mt-1 mb-0.5">
-              {headerSlot}
-            </div>
-          )}
+          {headerSlot && <div className="pointer-events-auto -mx-1 mt-1 mb-0.5">{headerSlot}</div>}
           {/* Chips row (model picker, slides template, research depth) — sit ABOVE the input */}
           {inlineSlot && (
             <div dir="ltr" className="flex items-center flex-wrap gap-1.5 pb-1.5">
@@ -393,7 +372,6 @@ const AnimatedInput = ({
             </AnimatePresence>
 
             <div className={`relative ${listening ? "hidden" : ""}`}>
-
               {!value && (
                 <div
                   aria-hidden
@@ -432,13 +410,18 @@ const AnimatedInput = ({
                 </div>
               )}
               <textarea
-
                 ref={textareaRef}
                 value={value}
                 onChange={handleChange}
                 onKeyDown={handleKeyDown}
-                onFocus={() => { setFocused(true); onFocusChange?.(true); }}
-                onBlur={() => { setFocused(false); onFocusChange?.(false); }}
+                onFocus={() => {
+                  setFocused(true);
+                  onFocusChange?.(true);
+                }}
+                onBlur={() => {
+                  setFocused(false);
+                  onFocusChange?.(false);
+                }}
                 placeholder=""
 
                 rows={1}
@@ -451,13 +434,12 @@ const AnimatedInput = ({
                 data-bwignore="true"
                 data-form-type="other"
                 name="chat-message"
-                className="relative w-full bg-transparent border-none outline-none resize-none text-[15.5px] md:text-sm text-foreground !text-foreground py-1.5 px-1 leading-relaxed md:py-2 font-medium transition-[min-height] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
+                className="scrollbar-hide relative w-full bg-transparent border-none outline-none resize-none text-[15.5px] md:text-sm text-foreground !text-foreground py-1.5 px-1 leading-relaxed md:py-2 font-medium transition-[min-height] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
                 style={{ minHeight: headerSlot ? "34px" : "38px" }}
               />
             </div>
             <AnimatePresence>{listening ? <ComposerVoiceWave /> : null}</AnimatePresence>
           </div>
-
 
           {/* Bottom controls row — plus + integrations on the start side, one
               morphing action button (mic ↔ send) on the end side. */}
@@ -475,10 +457,8 @@ const AnimatedInput = ({
               aria-label={uiT("openTools")}
               data-plus-trigger
             >
-
               <Plus className="w-[20px] h-[20px]" strokeWidth={1.9} />
             </Button>
-
 
             {(focused || hasText) && (
               <ComposerIntegrationsButton onClick={() => setIntegrationsOpen(true)} />
@@ -526,10 +506,8 @@ const AnimatedInput = ({
               )}
             </AnimatePresence>
           </div>
-
         </motion.div>
       </div>
-
     </div>
   );
 };
